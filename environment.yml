@@ -6,6 +6,7 @@ dependencies:
   - python
   # required
   - geopandas
+  - path
   - pygeofilter
   - pystac
   - pip
