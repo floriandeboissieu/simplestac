@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+
+[project]
+name = "simplestac"
+dynamic = ["version"]
+authors = [
+  {name="Remi Cresson", email="remi.cresson@inrae.fr"},
+  {name="Florian de Boissieu", email="florian.deboissieu@inrae.fr"},
+]
+description = "STAC tools to simplify STAC use"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "GPLv3"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "pystac",
+  "stac_static",
+  "stackstac",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+]
+
+
+[project.urls]
+Homepage = "https://gitlab.irstea.fr/umr-tetis/stac/simplestac"
+Repository = "https://gitlab.irstea.fr/umr-tetis/stac/simplestac"
+Issues = "https://gitlab.irstea.fr/umr-tetis/stac/simplestac/-/issues"
+
+[tool.setuptools.packages.find]
+include = [
+    "simplestac",
+]

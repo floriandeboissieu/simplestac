@@ -1,0 +1,19 @@
+name: simplestac
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python
+  # required
+  - geopandas
+  - pygeofilter
+  - pystac
+  - pip
+  - pip:
+    - stac_geoparquet
+    - git+https://github.com/jsignell/stac-static
+  - rioxarray
+  - stackstac
+  # testing
+  - pytest
+  - pytest-cov
