@@ -6,7 +6,6 @@ dependencies:
   - python
   # required
   - tqdm
-  - geopandas
   - ipykernel
   - path
   - rioxarray
@@ -14,13 +13,16 @@ dependencies:
 
   # dependencies of stac-static and stac-geoparquet
   # otherwise installed pip packages link to wrong stdc++ lib...
+  - geopandas
   - pygeofilter
   - pystac
   - pyarrow
   - pip
   - pip:
     # - stac_geoparquet
-    - git+https://github.com/jsignell/stac-static
+    # - git+https://github.com/jsignell/stac-static
+    - git+https://gitlab.irstea.fr/umr-tetis/stac/simplestac
+
   # testing
   - pytest
   - pytest-cov
