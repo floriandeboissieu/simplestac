@@ -24,4 +24,3 @@ dependencies:
   # testing
   - pytest
   - pytest-cov
-  # - libstdcxx-ng>=12.1
