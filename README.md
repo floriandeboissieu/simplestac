@@ -21,33 +21,87 @@ pip install git+https://gitlab.irstea.fr/umr-tetis/stac/simplestac
 
 # Examples
 
-## Create a local STAC ItemCollection
-
+## Example data
+Example data can be downloaded with the following:
 ```python
-from simplestac.utils import collection_format, build_item_collection
+from path import Path
+from tempfile import TemporaryDirectory
+from urllib.request import urlretrieve
+import zipfile
 
-tmpdir = Path(tempfile.TemporaryDirectory(prefix="fordead_").name)
-tmpdir = Path('/tmp/fordead_xpxnrg_e')
+tmpdir = Path(TemporaryDirectory(prefix="simplestac_").name)
+print(tmpdir) # to keep track of the directory to remove
 data_dir = tmpdir/'fordead_data-main'
-col_file = tmpdir / "collection.json"
-
 
 if not data_dir.exists():
     data_url = Path("https://gitlab.com/fordead/fordead_data/-/archive/main/fordead_data-main.zip")
 
-    with tempfile.TemporaryDirectory() as tmpdir2:
+    with TemporaryDirectory() as tmpdir2:
         dl_dir = Path(tmpdir2)
         zip_path, _ = urlretrieve(data_url, dl_dir / data_url.name)
         with zipfile.ZipFile(zip_path, "r") as f:
             f.extractall(tmpdir.mkdir_p())
 
-    # Let's start from the example collection built as in static_stac.py
-    # directory containing the remote sensing scenes
-    image_dir = data_dir / "sentinel_data/dieback_detection_tutorial/study_area"
-    fmt = collection_format("S2_L2A_THEIA")
-    col = build_item_collection(image_dir, fmt)
-    col.save_object(col_file)
+```
 
+__Before exiting your python session, don't forget to remove the temporary directory:__
+```python
 tmpdir.rmtree()
 ```
 
+## Create a local STAC ItemCollection
+
+In this example, local files (see previous section) are parsed to build
+a STAC ItemCollection.
+
+```python
+from path import Path
+from simplestac.utils import collection_format, build_item_collection, ItemCollection
+
+col_file = tmpdir / "collection.json"
+
+# Let's start from the example collection built as in static_stac.py
+# directory containing the remote sensing scenes
+image_dir = data_dir / "sentinel_data/dieback_detection_tutorial/study_area"
+fmt = collection_format("S2_L2A_THEIA")
+col = build_item_collection(image_dir, fmt)
+col.save_object(col_file)
+
+```
+
+Anyone can make his own format depending on the naming of the file names.
+The parsing is based on regex patterns.
+
+The expected minimal structure is the following:
+- item: metadata that are item-wise (i.e. independent of the asset)
+  - pattern: how to parse the item id from the item directory
+  - datetime: relative to datetime parsing (pattern, format)
+- item_assets: the metadata relative to each asset
+  - <band key>:
+    - pattern: regex pattern to find the band among the recursive list of files
+
+## Extended pystac.ItemCollection
+
+In `simplestac`, several methods have been added to the class `pystac.ItemCollection` in order to:
+  - sort items,
+  - filter (subset),
+  - convert to xarray (with stackstac),
+  - convert to geodataframe (with stac-geoparquet),
+  - apply a function to each item or on a rolling window
+
+The following converts the ItemCollection into a geodataframe:
+```python
+import geopandas as gpd
+
+# Load the item collection
+ItemCollection.from_file(col_file)
+
+# Load the region of interest
+roi = gpd.read_file(data_dir / "vector" / "area_interest.shp")
+
+# Plot the collection geometry and the region of interest
+ax = col.to_geodataframe().iloc[:1,:].to_crs(roi.crs).boundary.plot(color="red")
+roi.plot(ax=ax)
+```
+
+See [examples](https://gitlab.irstea.fr/umr-tetis/stac/simplestac/-/tree/main/simplestac/examples)
