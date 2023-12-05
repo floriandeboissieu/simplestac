@@ -5,7 +5,8 @@
 # and download the example dataset
 from pandas import to_datetime
 from path import Path
-from simplestac.utils import ItemCollection, build_item_collection, collection_format
+from simplestac.utils import ItemCollection
+from simplestac.local import build_item_collection, collection_format
 from tempfile import TemporaryDirectory
 from urllib.request import urlretrieve
 import xarray as xr
