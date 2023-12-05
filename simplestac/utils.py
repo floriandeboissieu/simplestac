@@ -773,14 +773,16 @@ class MyStacItem(object):
         if dt is not None:
             dt = to_datetime(dt.group(1), format=image_fmt["datetime"]["format"])
 
-        properties = dict()
-        for k, v in image_fmt["properties"].items():
-            if isinstance(v, str):
-                properties[k] = v
-            if "pattern" in v:
-                match = re.match(v["pattern"], image_dir.name)
-                if match is not None:
-                    properties[k] = match.group(1)
+        properties={}
+        if "properties" in image_fmt:
+            properties = dict()
+            for k, v in image_fmt["properties"].items():
+                if isinstance(v, str):
+                    properties[k] = v
+                if "pattern" in v:
+                    match = re.match(v["pattern"], image_dir.name)
+                    if match is not None:
+                        properties[k] = match.group(1)
             
             
         id = image_dir.name
