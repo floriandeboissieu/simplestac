@@ -91,7 +91,6 @@ from shapely.ops import unary_union
 from tqdm import tqdm
 import warnings
 
-from .utils import ItemCollection
 
 logger = logging.getLogger(__name__)
 
@@ -483,6 +482,8 @@ def build_item_collection(input_dir, fmt, progress=True, **kwargs):
     pystac.ItemCollection
         This collection can then be saved into a unique json file
     """
+    from simplestac.utils import ItemCollection # avoids circular import
+
     if isinstance(input_dir, list):
         items = []
         for d in input_dir:
