@@ -432,3 +432,33 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
 
 #######################################
 
+################## Some useful xarray functions ################
+
+def apply_formula(x, formula):
+    """Apply formula to bands
+
+    Parameters
+    ----------
+    x : xarray.DataArray
+        It should have a 'band' dimension with the names that will be used by formula.
+    formula : str
+        Formula, e.g. "B02>700", "CLM > 0", "SLC in [4,5]", "(B08-B06)/(B08+B06)"
+
+    Returns
+    -------
+    xarray DataArray
+        Band operation result
+    """
+    # formula = "B02 + B03"
+    # formula = "CLM in [4,5]"
+    bnames = x.band.values.tolist()
+    
+    for bname in bnames:
+        formula = re.sub(f"{bname}", f"x.sel(band='{bname}')", formula)
+    
+    # replace 'in [...]' by '.isin([...])'
+    formula = re.sub(r"\\s*in\\s*(\[.*\])", ".isin(\\1)", formula)
+
+    return eval(formula)
+
+#####################################
