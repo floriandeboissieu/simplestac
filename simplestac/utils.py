@@ -14,7 +14,7 @@ import xarray as xr
 from tqdm import tqdm
 import warnings
 
-from .local import stac_asset_info_from_raster
+from simplestac.local import stac_asset_info_from_raster
 
 logger = logging.getLogger(__name__)
 

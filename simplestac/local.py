@@ -79,6 +79,8 @@ from path import Path
 import rasterio
 from rasterio.io import DatasetReader, DatasetWriter, MemoryFile
 from rasterio.vrt import WarpedVRT
+from rasterio import warp
+from rasterio.features import bounds as feature_bounds
 import re
 import pandas as pd
 from pandas import DataFrame, to_datetime
@@ -91,28 +93,29 @@ from shapely.ops import unary_union
 from tqdm import tqdm
 import warnings
 
+EPSG_4326 = rasterio.crs.CRS.from_epsg(4326)
 
 logger = logging.getLogger(__name__)
 
 ############# Generic functions to build collection
-def get_rio_info(band_file):
+def get_rio_info(file):
     """
-    Get information about a raster band file.
+    Get information from a raster file.
 
     Parameters
     ----------
-    band_file : str
-        The path to the raster band file.
+    file : str
+        The path or uri to the raster file.
 
     Returns
     -------
     tuple
-        A tuple containing the bounding box of the band file, the media type,
+        A tuple containing the bounding box of the raster, the media type,
         the ground sample distance (gsd), and the metadata.
     """
-    # band_file = "~/git/fordeadv2/fordead_data-main/sentinel_data/dieback_detection_tutorial/study_area/SENTINEL2A_20151203-105818-575_L2A_T31UFQ_D_V1-1/SENTINEL2A_20151203-105818-575_L2A_T31UFQ_D_V1-1_FRE_B11.tif"
-    band_file = Path(band_file).expand()
-    with rasterio.open(band_file) as src:
+    # file = "~/git/fordeadv2/fordead_data-main/sentinel_data/dieback_detection_tutorial/study_area/SENTINEL2A_20151203-105818-575_L2A_T31UFQ_D_V1-1/SENTINEL2A_20151203-105818-575_L2A_T31UFQ_D_V1-1_FRE_B11.tif"
+    file = Path(file).expand()
+    with rasterio.open(file) as src:
         bbox = src.bounds
         meta = src.meta
         media_type = get_media_type(src)
@@ -189,13 +192,14 @@ def stac_proj_info(bbox, gsd, meta):
     # centroid nor gsd would be available...
 
     epsg = meta["crs"].to_epsg()
-    _, _, centroid = bbox_to_wgs(bbox, meta["crs"])
+    wkt2 = meta["crs"].to_wkt()
+    # _, _, centroid = bbox_to_wgs(bbox, meta["crs"])
     proj = dict(
         epsg = epsg,
-        wkt2 = meta["crs"].to_wkt(),
+        wkt2 = wkt2,
         # geometry = bbox_to_geom(bbox),
-        geometry = json.loads(to_geojson(box(*bbox))),
-        centroid = centroid,
+        geometry = bbox_to_geom(bbox),
+        # centroid = centroid,
         bbox = list(bbox),
         shape = (meta["height"], meta["width"]),
         transform = list(meta["transform"])
@@ -209,15 +213,20 @@ def stac_proj_info(bbox, gsd, meta):
     
     return proj_info
 
-def bbox_to_wgs(bbox, epsg):
-    g = gpd.GeoSeries(box(*bbox), crs=epsg)
-    g_wgs = g.to_crs(4326)
-    bbox = [float(f) for f in g_wgs.total_bounds]
-    geom = json.loads(to_geojson(g_wgs.geometry[0]))
-    centroid = g.geometry.centroid.to_crs(4326).iat[0]
-    centroid = {"lat": float(centroid.y), "lon": float(centroid.x)}
-    return bbox, geom, centroid
+def bbox_to_geom(bbox):
+    # 3x faster than shapely.geometry.mapping
+    return json.loads(to_geojson(box(*bbox)))
 
+def bbox_to_wgs(bbox, epsg):
+    """
+    """    
+    geom = bbox_to_geom(bbox)
+    # Reproject the geometry to "epsg:4326"
+    epsg = rasterio.crs.CRS.from_epsg(epsg)
+    geom = warp.transform_geom(epsg, EPSG_4326, geom)
+    bbox = feature_bounds(geom)
+
+    return bbox, geom
 #######################################
 
 ############# Build collection from json format
@@ -382,8 +391,8 @@ class MyStacItem(object):
             bbox_list = df_assets["asset"].apply(lambda x: box(*x.extra_fields["proj:bbox"]))
             if len(epsg_list.unique()) == 1:
                 epsg = epsg_list[0]
-                bbox = list(unary_union(bbox_list).bounds)
-                bbox_wgs, geometry, _ = bbox_to_wgs(bbox, epsg)
+                bbox = unary_union(bbox_list).bounds
+                bbox_wgs, geometry = bbox_to_wgs(bbox, epsg)
                 properties.update({
                     "proj:epsg" : int(epsg)
                 })
@@ -391,8 +400,8 @@ class MyStacItem(object):
                 df_assets["asset"].apply(lambda x: x.extra_fields.pop("proj:epsg"))
             else:
                 g = unary_union([gpd.GeoSeries(bbox, crs=epsg).to_crs(4326).geometry for bbox, epsg in zip(bbox_list, epsg_list)])
-                bbox = g.bounds
-                bbox_wgs, geometry, _ = bbox_to_wgs(bbox, 4326)
+                bbox_wgs = g.bounds
+                geometry = json.loads(to_geojson(g))
 
         
         # In case of ItemCollection, href is not included as it designates the json file
@@ -403,7 +412,7 @@ class MyStacItem(object):
             datetime = dt,
             properties = properties,
             assets = {k:v for k,v in assets},
-            bbox = bbox_wgs,
+            bbox = list(bbox_wgs), # converts tuple to list
             geometry = geometry,
             stac_extensions = [eo.SCHEMA_URI, projection.SCHEMA_URI]
         )
