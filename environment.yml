@@ -5,12 +5,13 @@ channels:
 dependencies:
   - python
   # required
-  - tqdm
+  - jsonschema
   - ipykernel
   - path
   - rioxarray
   - stackstac
-
+  - tqdm
+  
   # dependencies of stac-static and stac-geoparquet
   # otherwise installed pip packages link to wrong stdc++ lib...
   - geopandas
