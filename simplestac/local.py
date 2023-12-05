@@ -470,7 +470,7 @@ class MyStacItem(object):
 
         return item
 
-def build_item_collection(input_dir, fmt, progress=True, **kwargs):
+def build_item_collection(input_dir, fmt, progress=True, validate=True, **kwargs):
     """Build an item collection with the scenes in an input_dir,
     using fmt for parsing items and assets information.
 
@@ -483,6 +483,9 @@ def build_item_collection(input_dir, fmt, progress=True, **kwargs):
         See `collection_format`.
     progress : bool, optional
         Whether to show a progress bar, by default True
+    validate : bool, optional
+        Whether to validate the item structure, by default True.
+        Warning: this adds a lot of overhead (x10) so disable it if not needed.
     **kwargs : dict, optional
         Additional keyword arguments passed to pystac.ItemCollection
 
@@ -506,6 +509,6 @@ def build_item_collection(input_dir, fmt, progress=True, **kwargs):
     logger.info("Building item collection...")
     for item in tqdm(item_dirs, disable=not progress):
         items.append(
-            MyStacItem(item, fmt).create_item()
+            MyStacItem(item, fmt).create_item(validate=validate)
         )
     return ItemCollection(items, clone_items=False, **kwargs)  
