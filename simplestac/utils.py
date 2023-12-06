@@ -7,10 +7,12 @@ from path import Path
 import pandas as pd
 import pystac
 from pystac.item_collection import ItemLike
+import re
 import stac_static
 from stac_static.search import to_geodataframe
 import stackstac
 import xarray as xr
+import rioxarray # necessary to activate rio plugin in xarray
 from tqdm import tqdm
 import warnings
 
