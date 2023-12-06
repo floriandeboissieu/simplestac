@@ -452,6 +452,11 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
             x.add_asset(key=n, asset=asset)
     return x
 
+def drop_assets_without_proj(item, inplace=False):
+    if not inplace:
+        item = item.clone()
+    item.assets = {k:v for k,v in item.assets.items() if "proj:bbox" in v.extra_fields}
+    return item
 #######################################
 
 ################## Some useful xarray functions ################
@@ -483,4 +488,4 @@ def apply_formula(x, formula):
 
     return eval(formula)
 
-#####################################
+#######################################

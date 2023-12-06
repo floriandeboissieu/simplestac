@@ -13,6 +13,7 @@ import xarray as xr
 import zipfile
 
 tmpdir = Path(TemporaryDirectory(prefix="simplestac_").name)
+tmpdir = Path("/tmp/simplestac_szlnywhw")
 print(tmpdir) # to keep track of the directory to remove
 data_dir = tmpdir/'fordead_data-main'
 
