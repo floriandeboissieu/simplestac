@@ -13,7 +13,6 @@ import xarray as xr
 import zipfile
 
 tmpdir = Path(TemporaryDirectory(prefix="simplestac_").name)
-tmpdir = Path("/tmp/simplestac_szlnywhw")
 print(tmpdir) # to keep track of the directory to remove
 data_dir = tmpdir/'fordead_data-main'
 
@@ -37,7 +36,7 @@ coll = build_item_collection(image_dir, collection_format("S2_L2A_THEIA"))
 coll
 
 # %%
-# save collection
+# save collection in json format
 coll.save_object(coll_path)
 assert coll_path.exists()
 
