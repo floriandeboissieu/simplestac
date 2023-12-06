@@ -67,9 +67,17 @@ class ExtendPystacClasses:
             arr = arr.rio.clip(geometry)
         return arr
     
-    def filter(self, asset_names=None, clone_items=True, **kwargs):
+    def filter(self, assets=None, with_assets=None, clone_items=True, **kwargs):
         """Filter items with stac-static search.
-        
+        Additional args:
+
+            assets: list
+                List of assets to keep in items (other assets are droped).
+            with_assets: list
+                List of mandatory assets to keep items.
+            clone_items: bool
+                Whether to clone the items before filtering.
+            
         Documentation copied from stac-static.
 
         All parameters correspond to query parameters described in the `STAC API - Item Search: Query Parameters Table
@@ -128,7 +136,7 @@ class ExtendPystacClasses:
             filter_lang: Language variant used in the filter body. If `filter` is a
                 dictionary or not provided, defaults
                 to 'cql2-json'. If `filter` is a string, defaults to `cql2-text`.
-            
+        
         Notes:
             Argument filter would search into the first level of metadata of the asset.
             If the metadata to filter is a string, it should be used as 
@@ -146,10 +154,16 @@ class ExtendPystacClasses:
         else:    
             res = self.__class__(stac_static.search(self, **kwargs).item_collection())
 
-        if asset_names is not None:
+        if with_assets is not None:
+            if isinstance(with_assets, str):
+                with_assets = [with_assets]
+            res.items = [x for x in res.items if set(with_assets).issubset(x.assets)]
+
+        if assets is not None:
             for item in res.items:
-                item.assets = {k:a for k, a in item.assets.items() if k in asset_names}
-        
+                item.assets = {k:a for k, a in item.assets.items() if k in assets}
+            # remove None assets
+            res.items = [x for x in res.items if len(x.assets)>0]
         return res
 
     def to_geodataframe(self, include_items=False, **kwargs):
