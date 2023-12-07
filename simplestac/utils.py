@@ -51,6 +51,8 @@ class ExtendPystacClasses:
         cf https://github.com/gjoseph92/stackstac/issues/207. Otherwise, stackstac.stac has
         xy_coords="topleft" as the default.
 
+        Also, by default it is sorted by ascending datetime, see sortby_date.
+
 
         """
         # We could also have used :
@@ -169,7 +171,7 @@ class ExtendPystacClasses:
             res.items = [x for x in res.items if len(x.assets)>0]
         return res
 
-    def to_geodataframe(self, include_items=False, **kwargs):
+    def to_geodataframe(self, include_items=False, wgs84=True, **kwargs):
         """
         Convert the current pystac object to a GeoDataFrame.
 
@@ -194,9 +196,22 @@ class ExtendPystacClasses:
         stac_static.to_geodataframe
         """
         res = to_geodataframe(self)
+
+        if not wgs84: # convert to items epsg
+            if not "proj:epsg" in res.columns:
+                raise ValueError('Attribute "proj:epsg" is missing.')
+            
+            epsg = res["proj:epsg"].unique()
+            if len(epsg) != 1:
+                raise ValueError('Attribute "proj:epsg" is not unique.')
+            
+            epsg = epsg[0]
+            res = res.to_crs(epsg=epsg)
+            
         if include_items:
             items = pd.DataFrame([(x.id, x) for x in self.items], columns=["id", "item"])
             res = res.merge(items, on="id")
+
         return res
 
     def sort_items(self, inplace=False, **kwargs):
