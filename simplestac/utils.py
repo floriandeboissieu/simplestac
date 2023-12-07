@@ -306,6 +306,7 @@ class ExtendPystacClasses:
                       overwrite=False,
                       window=2,
                       inplace=False,
+                      center=False,
                       datetime=None,
                       bbox=None,
                       geometry=None,
@@ -330,6 +331,9 @@ class ExtendPystacClasses:
         inplace : bool, optional
             Whether to modify the collection in place. Defaults to False.
             In that case, a cloned collection is returned.
+        center : bool, optional
+            Whether to center the window.
+            Defaults to False (the rightmost item will be filled with the new asset).
         bbox : tuple, optional
             A bounding box to clip_box the items with. Defaults to None.
         geometry : shapely.geometry, optional
@@ -344,7 +348,8 @@ class ExtendPystacClasses:
         object
             A clone of the collection if inplace is False, otherwise None.
         """        
-
+        # TODO: could be done with padnasDataFrame.rolling function,
+        # which would make the things easier
         if inplace:
             x = self
         else:
@@ -363,8 +368,11 @@ class ExtendPystacClasses:
         Nout = len(name)
         
         output_dir = [Path(d).expand().mkdir_p() for d in output_dir] # make sure they exist 
-        for i in tqdm(np.arange(window-1, len(x.items)), disable=not progress):
-            subitems = x.items[max((i-window),0):i]
+        for i in tqdm(range(len(x.items)), disable=not progress):
+            subitems = x.items[max((i-window+1),0):i+1]
+            if center:
+                subitems = x.items[max(i-window//2,0):i+(window-1)//2+1]
+
             subcol = self.__class__(subitems, clone_items=False)
             raster_file = [d / f"{subitems[-1].id}_{n}.tif" for n, d in zip(name, output_dir)]
             if not overwrite and all([r.exists() for r in raster_file]):
@@ -387,7 +395,7 @@ class ExtendPystacClasses:
                 if f.exists():
                     stac_info = stac_asset_info_from_raster(f)
                     asset = pystac.Asset.from_dict(stac_info)
-                    subitems[-1].add_asset(key=n, asset=asset)
+                    x.items[i].add_asset(key=n, asset=asset)
         
         if not inplace:
             return x
