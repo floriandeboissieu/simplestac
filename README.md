@@ -4,19 +4,18 @@ SimpleSTAC eases the use of pystac.
 
 # Install
 
-It is recommended to install the package in a virtual environment. See
+__Recommendation:__ install the package in a virtual environment. See
 [miniforge](https://github.com/conda-forge/miniforge) for conda/mamba, or 
 [venv](https://docs.python.org/3/library/venv.html) for virtualenv.
 
-Within a mamba env:
+Within a conda env:
 ```shell
-mamba env create -f https://gitlab.irstea.fr/umr-tetis/stac/simplestac/-/raw/main/environment.yml
-
+mamba env create -n simplestac -f https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/raw/main/environment.yml
 ```
 
 Within a virtualenv:
 ```shell
-pip install git+https://gitlab.irstea.fr/umr-tetis/stac/simplestac
+pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac
 ```
 
 # Examples
@@ -77,8 +76,10 @@ The expected minimal structure is the following:
   - pattern: how to parse the item id from the item directory
   - datetime: relative to datetime parsing (pattern, format)
 - item_assets: the metadata relative to each asset
-  - <band key>:
+  - _asset key_:
     - pattern: regex pattern to find the band among the recursive list of files
+
+See a simple [Theia format](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/simplestac/formats/S2_L2A_THEIA.json?ref_type=heads) made for the example.
 
 ## Extended pystac.ItemCollection
 
