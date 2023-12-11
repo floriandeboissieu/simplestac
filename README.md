@@ -55,7 +55,8 @@ a STAC ItemCollection.
 
 ```python
 from path import Path
-from simplestac.utils import collection_format, build_item_collection, ItemCollection
+from simplestac.utils import ItemCollection
+from simplestac.local import collection_format, build_item_collection
 
 col_file = tmpdir / "collection.json"
 
