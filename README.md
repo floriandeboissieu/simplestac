@@ -91,7 +91,8 @@ In `simplestac`, several methods have been added to the class `pystac.ItemCollec
   - convert to geodataframe (with stac-geoparquet),
   - apply a function to each item or on a rolling window
 
-The following converts the ItemCollection into a geodataframe:
+After executing previous code, the following converts the ItemCollection into 
+a geodataframe and plots its bouding box over the geometry of a region of interest :
 ```python
 import geopandas as gpd
 
