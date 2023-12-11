@@ -504,7 +504,10 @@ def build_item_collection(input_dir, fmt, progress=True, validate=True, **kwargs
         return ItemCollection(items, clone_items=False, **kwargs)
     
     input_dir = Path(input_dir).expand()
-    item_dirs =  [d for d in input_dir.dirs() if re.match(fmt["item"]["pattern"], d.name)]
+    if re.match(fmt["item"]["pattern"], input_dir.name):
+        item_dirs = [input_dir]
+    else:
+        item_dirs =  [d for d in input_dir.dirs() if re.match(fmt["item"]["pattern"], d.name)]
     items = []
     logger.info("Building item collection...")
     for item in tqdm(item_dirs, disable=not progress):
