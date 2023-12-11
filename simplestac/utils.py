@@ -14,6 +14,7 @@ import stackstac
 import xarray as xr
 import rioxarray # necessary to activate rio plugin in xarray
 from tqdm import tqdm
+from typing import Union
 import warnings
 
 from simplestac.local import stac_asset_info_from_raster
@@ -411,17 +412,75 @@ class Collection(pystac.Collection, ExtendPystacClasses):
     pass
 
 
-def write_raster(x: xr.DataArray, file, driver="COG", overwrite=False):
-    if Path(file).exists() and not overwrite:
-        logger.debug(f"File already exists, skipped: {file}")
-        return
-    if x.dtype == 'bool':
-        x = x.astype('uint8')
-    x.rio.to_raster(file, driver=driver)
+def write_assets(x: Union[ItemCollection, pystac.Item],
+                 output_dir: str, bbox=None, **kwargs):
+    """
+    Writes item(s) assets to the specified output directory.
 
+    Each item assets is written to a separate raster file with
+    path output_dir/item.id/href.name.
+
+    Parameters
+    ----------
+    x : Union[ItemCollection, pystac.Item]
+        The item or collection of items to write assets from.
+    output_dir : str
+        The directory to write the assets to.
+    bbox : Optional
+        The bounding box to clip the assets to.
+    **kwargs
+        Additional keyword arguments passed to write_raster.
+
+    """    
+    if isinstance(x, pystac.Item):
+        x = [x]
+    x = ItemCollection(x, clone_items=False)
+
+    output_dir = Path(output_dir).expand()
+    arr = x.to_xarray(bbox=bbox).set_xindex("id")
+    df= x.to_geodataframe(wgs84=False).set_index("id")
+    for id in arr.id.values:
+        band_files = pd.DataFrame(df.loc[id].assets).transpose().href.apply(Path)
+        item_dir = (output_dir / id).mkdir_p()
+        for b in arr.band.values:
+            filename = band_files.loc[b].name             
+            file = item_dir / f"{filename}"
+            write_raster(arr.sel(id=id, band=b), file, **kwargs)
 
 def apply_item(x, fun, name, output_dir, overwrite=False,
                copy=True, bbox=None, geometry=None, **kwargs):
+    """
+    Applies a function to an item in a collection, 
+    saves the result as a raster file and 
+    adds the new asset to the item.
+
+    Parameters
+    ----------
+    x : pystac.Item
+        The item to apply the function to.
+    fun : function
+        The function to apply to the item.
+    name : str or list of str
+        The name or names of the output raster file(s).
+    output_dir : str or list of str
+        The directory or directories to save the output raster file(s) to.
+    overwrite : bool, optional
+        Whether to overwrite existing raster files. Defaults to `False`.
+    copy : bool, optional
+        Whether to make a copy of the item before applying the function. Defaults to `True`.
+        If False, the original item is modified in-place.
+    bbox : tuple or None, optional
+        The bounding box to clip the raster to. Defaults to `None`.
+    geometry : shapely.geometry or None, optional
+        The geometry to clip the raster to. Defaults to `None`.
+    **kwargs : dict
+        Additional keyword arguments to pass to the function.
+
+    Returns
+    -------
+    pystac.Item
+        The modified item with the output raster file(s) added as assets.
+    """    
 
 # could be a method added to item or collection
     if not isinstance(x, pystac.Item):
@@ -483,6 +542,35 @@ def drop_assets_without_proj(item, inplace=False):
 #######################################
 
 ################## Some useful xarray functions ################
+
+def write_raster(x: xr.DataArray, file, driver="COG", overwrite=False, **kwargs):
+    """
+    Write a raster file from an xarray DataArray.
+
+    Parameters
+    ----------
+    x : xr.DataArray
+        The xarray DataArray to be written as a raster.
+    file : str
+        The file path to write the raster to.
+    driver : str, optional
+        The driver to use for writing the raster file. Defaults to "COG".
+    overwrite : bool, optional
+        Whether to overwrite the file if it already exists. Defaults to False.
+        If False, a logger.debug message is printed if the file already exists.
+    **kwargs
+        Additional keyword arguments to be passed to the xarray rio.to_raster() function.
+
+    Returns
+    -------
+    None
+    """
+    if Path(file).exists() and not overwrite:
+        logger.debug(f"File already exists, skipped: {file}")
+        return
+    if x.dtype == 'bool':
+        x = x.astype('uint8')
+    x.rio.to_raster(file, driver=driver, **kwargs)
 
 def apply_formula(x, formula):
     """Apply formula to bands
