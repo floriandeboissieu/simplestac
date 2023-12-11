@@ -22,7 +22,7 @@ dependencies:
   - pip:
     # - stac_geoparquet
     # - git+https://github.com/jsignell/stac-static
-    - git+https://gitlab.irstea.fr/umr-tetis/stac/simplestac
+    - git+https://forgemia.inra.fr/umr-tetis/stac/simplestac
 
   # testing
   - pytest
