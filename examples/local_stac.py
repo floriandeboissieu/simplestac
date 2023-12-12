@@ -1,51 +1,43 @@
 """This notebook aims at showing how to build a STAC ItemCollection from local data"""
 
 # %%
-# load required libraries, create a temporary working directory
-# and download the example dataset
+# load required libraries and define paths
+import geopandas as gpd
+import numpy as np
 from pandas import to_datetime
 from path import Path
-from simplestac.utils import ItemCollection
+from simplestac.utils import ItemCollection, apply_formula
 from simplestac.local import build_item_collection, collection_format
-from tempfile import TemporaryDirectory
-from urllib.request import urlretrieve
 import xarray as xr
-import zipfile
+import rioxarray # necessary fo xr.open_dataset
 
-tmpdir = Path(TemporaryDirectory(prefix="simplestac_").name)
-print(tmpdir) # to keep track of the directory to remove
-data_dir = tmpdir/'fordead_data-main'
 
-if not data_dir.exists():
-    data_url = Path("https://gitlab.com/fordead/fordead_data/-/archive/main/fordead_data-main.zip")
+data_dir = Path(__file__).parent/"data"
+image_dir = data_dir / "s2_scenes"
+roi_file = data_dir / "roi.geojson"
+res_dir = data_dir / "local_stac"
 
-    with TemporaryDirectory() as tmpdir2:
-        dl_dir = Path(tmpdir2)
-        zip_path, _ = urlretrieve(data_url, dl_dir / data_url.name)
-        with zipfile.ZipFile(zip_path, "r") as f:
-            f.extractall(tmpdir.mkdir_p())
+if not (image_dir.exists() and roi_file.exists()):
+    raise ValueError("Data not found")
 
-image_dir = data_dir / "sentinel_data/dieback_detection_tutorial/study_area"
+# The notebook results will be stored in the following directory
+print(res_dir.mkdir_p())
 
 # make a temporary directory where the catalog will be written
-coll_path = tmpdir / "collection.json"
+coll_path = res_dir / "collection.json"
 
 # %%
 # build a static collection with local files
-coll = build_item_collection(image_dir, collection_format("S2_L2A_THEIA"))
+# and save it in a json file
+if not coll_path.exists():
+    coll = build_item_collection(image_dir, collection_format("S2_L2A_THEIA"))
+    coll.save_object(coll_path)
+    assert coll_path.exists()
+    coll2 = ItemCollection.from_file(coll_path)
+    assert set([item.id for item in coll2])==set([item.id for item in coll])
+
+coll = ItemCollection.from_file(coll_path)
 coll
-
-# %%
-# save collection in json format
-coll.save_object(coll_path)
-assert coll_path.exists()
-
-# %%
-# load collection
-coll2 = ItemCollection.from_file(coll_path)
-assert set([item.id for item in coll2.items])==set([item.id for item in coll.items])
-
-
 # %%
 # Now let's browse the different methods added to ItemCollection
 # ## Convert to a geodataframe
@@ -59,14 +51,14 @@ coll.to_geodataframe(wgs84=False).plot()
 # %%
 # ## Sort items
 # By date and tilename for example
-coll2.sort_items(by=["datetime", "s2:mgrs_tile"], inplace=True)
+coll.sort_items(by=["datetime", "s2:mgrs_tile"], inplace=True)
 # This is particularly useful when applying a rolling window function on the data, see below.
 
 # %%
 # ## Filter items
 # subset collection by time, bounding box or any other property, e.g. S2 MGRS tile name
-start = to_datetime("2016-01-01")
-end = to_datetime("2017-01-01")
+start = to_datetime("2016-01-01", utc=True)
+end = to_datetime("2017-01-01", utc=True)
 subcoll = coll.filter(datetime="2016-01-01/2017-01-01",
                       filter="s2:mgrs_tile = 'T31UFQ'")
 assert set([item.datetime.timestamp() for item in subcoll])== \
@@ -83,8 +75,8 @@ subcoll
 # It is based on stackstac and provides a lot of options such as
 # resolution, subset of assets, interpolion method, etc.
 # See documentation for more details.
-coll2.to_xarray()
-coll2.to_xarray(resolution=60, assets=['B08', 'B8A'])
+coll.to_xarray()
+coll.to_xarray(resolution=60, assets=['B08', 'B8A'])
 
 # Here is are a few examples of converting collection to xarray while subsetting
 # specific assets and a specific time period.
@@ -136,8 +128,7 @@ smallxr[:2,:,:,:].plot(row='time', col='band')
 # with a bbox
 subcoll.to_xarray(bbox=extract_zone, assets=['B08', 'B8A'])
 # or a geometry
-import geopandas as gpd
-roi = gpd.read_file(data_dir / "vector" / "area_interest.shp")
+roi = gpd.read_file(roi_file)
 roi = roi.to_crs(subcoll.to_xarray().crs)
 subcoll.to_xarray(
     geometry=roi.geometry, 
@@ -149,23 +140,21 @@ subcoll.to_xarray(
 # saves the result in raster file, and
 # includes it as a new asset in the item.
 # For the NDVI for example:
-from simplestac.utils import apply_formula
-coll2.apply_items(
+coll.apply_items(
     fun=apply_formula, # a function that returns one or more xarray.DataArray
     name="NDVI",
-    formula = "((B08 - B04) / (B08 + B04))",
-    output_dir=tmpdir / "NDVI",
+    formula="((B08 - B04) / (B08 + B04))",
+    output_dir=res_dir / "NDVI",
     datetime="2018-01-01/..",
     geometry=roi.geometry,
     inplace=True
 )
-coll2.filter(with_assets="NDVI").to_xarray().sel(band="NDVI").isel(time=range(4)).plot(col="time", col_wrap=2)
+coll.filter(with_assets="NDVI").to_xarray().sel(band="NDVI").isel(time=range(4)).plot(col="time", col_wrap=2)
 # %%
-coll2.filter(with_assets="NDVI").to_xarray().sel(band="NDVI").isel(x=150, y=150).plot.line(x="time")
+coll.filter(with_assets="NDVI").to_xarray().sel(band="NDVI").isel(x=150, y=150).plot.line(x="time")
 # %%
 # The method `apply_rolling` applies to a function to a group of items in
 # a rolling window.
-import numpy as np
 def masked_mean(x, band):
     if band not in x.band:
         return
@@ -174,32 +163,17 @@ def masked_mean(x, band):
     mask = x.sel(band="CLM")>0
     return x.sel(band=band).where(~mask).mean(dim="time", skipna=True)
 
-coll2.apply_rolling(
+coll.apply_rolling(
     fun=masked_mean,
     band="NDVI",
     name="mNDVI",
-    output_dir=tmpdir / "mNDVI",
+    output_dir=res_dir / "mNDVI",
     geometry=roi.geometry,
     inplace=True,
-    overwrite=True,
     window=5,
     center=True,
 )
-mask = coll2.to_xarray().sel(band="CLM")>0
-coll2.filter(with_assets="mNDVI").to_xarray().where(~mask).sel(band=["mNDVI", "NDVI"]).isel(x=150, y=150).plot.line(x="time")
-
-
-# %%
-# remove temp directory **recursively**
-tmpdir.rmtree()
+mask = coll.to_xarray().sel(band="CLM")>0
+coll.filter(with_assets="mNDVI").to_xarray().where(~mask).sel(band=["mNDVI", "NDVI"]).isel(x=150, y=150).plot.line(x="time")
 
 # Et voilà!
-
-
-
-
-
-
-
-
-# %%
