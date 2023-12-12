@@ -6,7 +6,9 @@ from a series of scenes/images in local files.
 Notes:
 ------
     A STAC collection or a catalog is a nested dict (json) listing a number of items
-    (e.g. a remote sensing acquisition) and their assets (e.g. bands)
+    (e.g. a remote sensing acquisition) and their assets (e.g. raster bands, quicklook, thumbnails, xml files, ...).
+
+    The usual nesting is, from top level to bottom: catalog>collections>sub-collections>...>items>assets.
 
     A tutorial on Landsat, but transposable for Sentinel or others is available here:
     https://pystac.readthedocs.io/en/stable/tutorials/creating-a-landsat-stac.html
@@ -214,12 +216,49 @@ def stac_proj_info(bbox, gsd, meta):
     return proj_info
 
 def bbox_to_geom(bbox):
+    """
+    Convert a bounding box to a geometry object.
+
+    Parameters
+    ----------
+    bbox : tuple or list
+        The bounding box represented as a tuple of four values (xmin, ymin, xmax, ymax).
+
+    Returns
+    -------
+    dict
+        The geometry object represented as a dictionary.
+
+    Notes
+    -----
+    This function is 3 times faster than shapely.geometry.mapping.
+
+    Examples
+    --------
+    >>> bbox_to_geom((0, 0, 10, 10))
+    {'type': 'Polygon', 'coordinates': (((0, 0), (10, 0), (10, 10), (0, 10), (0, 0)),)}
+    """
     # 3x faster than shapely.geometry.mapping
     return json.loads(to_geojson(box(*bbox)))
 
 def bbox_to_wgs(bbox, epsg):
     """
-    """    
+    Convert a bounding box to WGS84 coordinates.
+
+    Parameters
+    ----------
+    bbox : tuple or list
+        A tuple representing the bounding box coordinates (xmin, ymin, xmax, ymax).
+    epsg : int
+        The EPSG code representing the coordinate reference system.
+
+    Returns
+    -------
+    bbox : tuple
+        A tuple representing the updated bounding box coordinates.
+    geom : dict
+        A dictionary representing the transformed geometry.
+    """
     geom = bbox_to_geom(bbox)
     # Reproject the geometry to "epsg:4326"
     epsg = rasterio.crs.CRS.from_epsg(epsg)
@@ -233,6 +272,15 @@ def bbox_to_wgs(bbox, epsg):
 FORMATS_DIR = Path(__file__).parent / "formats"
 
 def common_name_table():
+    """
+    Returns a table of common band names and their corresponding
+    wavelenght minimum and maximum values.
+    
+    Returns
+    -------
+    table : pandas.DataFrame
+        A DataFrame containing the common band names and their corresponding wavelength minimum and maximum values.
+    """
     # https://github.com/stac-extensions/eo/#common-band-names
     file = FORMATS_DIR / "common_name_table.csv"
     table = pd.read_csv(file, sep="\t")

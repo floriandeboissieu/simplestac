@@ -535,6 +535,16 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
     return x
 
 def drop_assets_without_proj(item, inplace=False):
+    """
+    Drops assets from the given item that do not have the "proj:bbox" field in their extra_fields.
+
+    Parameters:
+        item (Item): The item from which to drop assets.
+        inplace (bool, optional): If True, the assets will be dropped in place. Otherwise, a clone of the item will be created and modified.
+
+    Returns:
+        Item: The modified item with the dropped assets.
+    """
     if not inplace:
         item = item.clone()
     item.assets = {k:v for k,v in item.assets.items() if "proj:bbox" in v.extra_fields}
