@@ -122,8 +122,9 @@
       "pattern" : ".+_CLM_R2\\.tif",
       "roles" : ["data"]
     },
-    "SATURATED" : {
-      "pattern" : ".+_SAT_R2\\.tif"
+    "SAT" : {
+      "pattern" : ".+_SAT_R2\\.tif",
+      "roles" : ["data"]
     }
   }
 }
