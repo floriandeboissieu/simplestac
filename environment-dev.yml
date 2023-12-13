@@ -1,0 +1,8 @@
+name: simplestac
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  # testing
+  - pytest
+  - pytest-cov
