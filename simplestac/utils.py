@@ -29,6 +29,30 @@ logger = logging.getLogger(__name__)
 class ExtendPystacClasses:
     """Add capacities to_xarray and filter to pystac Catalog, Collection, ItemCollection"""
 
+    def drop_non_raster(self, inplace=False):
+        """Drop non raster assets from each item in the collection.
+        
+        Parameters
+        ----------
+        inplace : bool
+            Whether to modify the collection in place. Defaults to False.
+        
+        Returns
+        -------
+        object
+            If `inplace` is False, a cloned collection is returned.       
+        """
+        if inplace:
+            x = self
+        else:
+            x = self.clone()
+        
+        for item in x.items: 
+            drop_assets_without_proj(item, inplace=True)
+
+        if not inplace:
+            return x
+
     def to_xarray(self, xy_coords="center", bbox=None, geometry=None, **kwargs):
         """Returns a DASK xarray()
         
