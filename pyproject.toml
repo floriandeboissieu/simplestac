@@ -31,13 +31,19 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest",
+  "pytest-cov",
+]
+notebook=[
+  "ipykernels",
+  "planetary-computer",
+  "xpystac",
 ]
 
 
 [project.urls]
-Homepage = "https://gitlab.irstea.fr/umr-tetis/stac/simplestac"
-Repository = "https://gitlab.irstea.fr/umr-tetis/stac/simplestac"
-Issues = "https://gitlab.irstea.fr/umr-tetis/stac/simplestac/-/issues"
+Homepage = "https://forgemia.inra.fr/umr-tetis/stac/simplestac"
+Repository = "https://forgemia.inra.fr/umr-tetis/stac/simplestac"
+Issues = "https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/issues"
 
 [tool.setuptools.packages.find]
 include = [
