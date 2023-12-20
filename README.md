@@ -1,8 +1,10 @@
-# SimpleSTAC
+# SimpleSTAC : STAC tools to simplify STAC use.
 
-SimpleSTAC eases the use of pystac.
+[Documentation](https://simplestac-umr-tetis-stac-e5919c76d0463bc6d6669060b20af6f73f2a8.pages.mia.inra.fr)
 
-[See Documentation](https://simplestac-umr-tetis-stac-e5919c76d0463bc6d6669060b20af6f73f2a8.pages.mia.inra.fr)
+[![licence](https://img.shields.io/badge/Licence-GPL--3-blue.svg)](https://www.r-project.org/Licenses/GPL-3)
+[![python](https://img.shields.io/badge/Python-3-blue.svg)](https://www.python.org)
+
 
 # Install
 
