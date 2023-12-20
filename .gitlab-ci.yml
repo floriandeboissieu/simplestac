@@ -5,9 +5,10 @@ pages:
   stage: pages
   image: mambaorg/micromamba
   script:
-    - micromamba env create -n simplestac-doc -f environment.yml
-    - micromamba env update -n simplestac-doc -f environment-docs.yml
+    - micromamba create -n simplestac-doc -f environment.yml
+    - micromamba update -n simplestac-doc -f environment-docs.yml
     - micromamba activate simplestac-doc
+    - pip install -e .
     - portray as_html -c pyproject_doc.toml
     - mv site public
   artifacts:
