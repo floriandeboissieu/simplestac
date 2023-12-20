@@ -5,6 +5,24 @@
 [![licence](https://img.shields.io/badge/Licence-GPL--3-blue.svg)](https://www.r-project.org/Licenses/GPL-3)
 [![python](https://img.shields.io/badge/Python-3-blue.svg)](https://www.python.org)
 
+# Features
+
+__Build a STAC ItemCollection based on local raster data:__
+
+- functions to get the minimal raster metadata (bbox, geometry, projection) in STAC format
+- class `MyStacItem` to create a simple STAC item with raster files
+- function `build_item_collection` to build your small `ItemCollection` with a template for further metadata
+  
+__Extends class `pystac.ItemCollection` with methods to simplify data manipulation:__
+- sort collection items
+- filter (subset) cube by spatio-temporal coordinates and assets
+- convert to a lazy dask `dataarray` cube
+- convert to a geodataframe
+- apply a function to each item or on a rolling window, write and add the created assets to current collection.
+
+__Additional functions:__
+- apply formula to a `dataarray` cube (e.g. "(B08-B04)/(B08+B04)")
+- write collection assets to local files
 
 # Install
 
@@ -24,33 +42,13 @@ pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac
 
 # Examples
 
+See [example scripts](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples) for a detailed demo of `simpleSTAC` features.
+
+Below is a small teaser.
+
 ## Example data
-Example data can be downloaded with the following:
-```python
-from path import Path
-from tempfile import TemporaryDirectory
-from urllib.request import urlretrieve
-import zipfile
+Example data can be downloaded [here](https://gitlab.com/fordead/fordead_data/-/archive/main/fordead_data-main.zip) or with the script [download_data.py](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples/download_data.py?ref_type=heads)
 
-tmpdir = Path(TemporaryDirectory(prefix="simplestac_").name)
-print(tmpdir) # to keep track of the directory to remove
-data_dir = tmpdir/'fordead_data-main'
-
-if not data_dir.exists():
-    data_url = Path("https://gitlab.com/fordead/fordead_data/-/archive/main/fordead_data-main.zip")
-
-    with TemporaryDirectory() as tmpdir2:
-        dl_dir = Path(tmpdir2)
-        zip_path, _ = urlretrieve(data_url, dl_dir / data_url.name)
-        with zipfile.ZipFile(zip_path, "r") as f:
-            f.extractall(tmpdir.mkdir_p())
-
-```
-
-__Before exiting your python session, don't forget to remove the temporary directory:__
-```python
-tmpdir.rmtree()
-```
 
 ## Create a local STAC ItemCollection
 
@@ -62,21 +60,23 @@ from path import Path
 from simplestac.utils import ItemCollection
 from simplestac.local import collection_format, build_item_collection
 
-col_file = tmpdir / "collection.json"
+image_dir = data_dir / "s2_scenes"
+res_dir = data_dir / "local_stac"
+print(res_dir.mkdir_p())
+
+col_file = res_dir / "collection.json"
 
 # Let's start from the example collection built as in static_stac.py
 # directory containing the remote sensing scenes
-image_dir = data_dir / "sentinel_data/dieback_detection_tutorial/study_area"
 fmt = collection_format("S2_L2A_THEIA")
 col = build_item_collection(image_dir, fmt)
 col.save_object(col_file)
-
 ```
 
 Anyone can make his own format depending on the naming of the file names.
 The parsing is based on regex patterns.
 
-The expected minimal structure is the following:
+The expected minimal structure is a json with the following:
 - item: metadata that are item-wise (i.e. independent of the asset)
   - pattern: how to parse the item id from the item directory
   - datetime: relative to datetime parsing (pattern, format)
@@ -87,29 +87,39 @@ The expected minimal structure is the following:
 See a simple [Theia format](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/simplestac/formats/S2_L2A_THEIA.json?ref_type=heads) made for the example.
 
 ## Extended pystac.ItemCollection
-
-In `simplestac`, several methods have been added to the class `pystac.ItemCollection` in order to:
-
-  - sort items,
-  - filter (subset),
-  - convert to xarray (with stackstac),
-  - convert to geodataframe (with stac-geoparquet),
-  - apply a function to each item or on a rolling window
-
 After executing previous code, the following converts the ItemCollection into 
 a geodataframe and plots its bouding box over the geometry of a region of interest :
 ```python
 import geopandas as gpd
-
+from simplestac.utils import apply_formula
 # Load the item collection
 ItemCollection.from_file(col_file)
 
 # Load the region of interest
-roi = gpd.read_file(data_dir / "vector" / "area_interest.shp")
+roi = gpd.read_file(data_dir / "roi.geojson")
 
 # Plot the collection geometry and the region of interest
 ax = col.to_geodataframe().iloc[:1,:].to_crs(roi.crs).boundary.plot(color="red")
 roi.plot(ax=ax)
+
+# Compute the NDVI on a subset of the collection (clipped by datetime and geometry). Each NDVI raster is written in a local COG file and inserted in item assets in order to avoid memory overflow.
+col.apply_items(
+    fun=apply_formula, # a function that returns one or more xarray.DataArray
+    name="NDVI",
+    formula="((B08 - B04) / (B08 + B04))",
+    output_dir=res_dir / "NDVI",
+    datetime="2018-01-01/..",
+    geometry=roi.geometry,
+    inplace=True
+)
+
+# Select scenes with the NDVI
+arr = col.filter(with_assets="NDVI").to_xarray()
+assert "NDVI" in arr.band.values
+
+# Plot NDVI applying cloud mask
+mask = arr.sel(band="CLM") > 0
+arr.sel(band="NDVI").where(~mask).isel(time=range(4)).plot(col="time", col_wrap=2)
 ```
 
-See [examples](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/tree/main/examples)
+The same could be done with a remote item collection, see [examples](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples).
