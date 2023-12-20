@@ -6,8 +6,10 @@ pages:
   image: mambaorg/micromamba
   script:
     - micromamba create -n simplestac-doc -f environment.yml
-    - micromamba update -n simplestac-doc -f environment-docs.yml
-    # - micromamba activate simplestac-doc
+    - eval "$(micromamba shell hook --shell bash)" 
+    - micromamba activate simplestac-doc
+    - micromamba env list
+    - micromamba install -y -f environment-docs.yml
     - micromamba run -n simplestac-doc pip install -e .
     - micromamba run -n simplestac-doc portray as_html -c pyproject_doc.toml
     - mv site public
