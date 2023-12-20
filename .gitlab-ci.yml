@@ -5,7 +5,8 @@ pages:
   stage: pages
   image: mambaorg/micromamba
   script:
-    - micromamba create -n simplestac -f environment.yml -f environment-doc.yml
+    - micromamba create -y -n simplestac -f environment.yml
+    - micromamba install -y -n simplestac -f environment-doc.yml
     - eval "$(micromamba shell hook --shell bash)" 
     - micromamba activate simplestac
     - micromamba env list
