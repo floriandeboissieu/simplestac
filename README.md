@@ -42,6 +42,13 @@ Within a virtualenv:
 pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac
 ```
 
+__Known issues:__
+
+On Windows, the installation of `simplestac` may end with an error due to `Filename too long` in `stac-static`, a dependency of `simplestac`. Git can be configured to manage such filenames:
+```shell
+git config --system core.longpaths true
+```
+
 # Examples
 
 See [example scripts](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples) for a detailed demo of `simpleSTAC` features.
