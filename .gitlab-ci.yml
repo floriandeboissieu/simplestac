@@ -3,7 +3,7 @@ stages:
 
 pages:
   stage: pages
-  image: micromamba/dev-env
+  image: mambaorg/micromamba
   script:
     - micromamba env create -n simplestac-doc -f environment.yml
     - micromamba env update -n simplestac-doc -f environment-docs.yml
