@@ -1,0 +1,62 @@
+# test website locally:
+# portray in_browser -c pyproject.toml
+# generate website with the following:
+# portray as_html -c pyproject.toml
+
+[tool.portray]
+modules = ["simplestac.local", "simplestac.utils"]
+# extra_markdown_extensions = ['mdx_breakless_lists']
+extra_markdown_extensions = ['pymdownx.superfences']
+
+[[tool.portray.extra_markdown_extensions]]
+    [tool.portray.extra_markdown_extensions.mdx_math]
+        enable_dollar_delimiter = 1
+[[tool.portray.extra_markdown_extensions]]
+    [tool.portray.extra_markdown_extensions.toc]
+        toc_depth = 5
+        permalink = "🔗"
+        # toc_depth = "2-5" # for bootstrap
+
+# for code blocks highlighting
+[[tool.portray.extra_markdown_extensions]]
+    [tool.portray.extra_markdown_extensions."pymdownx.highlight"]
+        pygments_lang_class = "true"
+
+[tool.portray.pdocs]
+exclude_source = 1
+template_dir = "docs/templates/pdocs"
+
+[tool.portray.mkdocs]
+    site_name = "simplestac"
+    extra_css = ['docs/css/style.css', 'docs/css/code_select.css'] # , "https://cdn.datatables.net/1.12.0/css/jquery.dataTables.min.css"
+    # in order to give back color (not grey) to pycon Generic.Output
+    extra_javascript = ['docs/css/code_select.js']
+    copyright = 'Copyright &copy; 2023 - 2024 Florian de Boissieu'
+
+[tool.portray.mkdocs.theme]
+name = "material"
+features=["navigation.top"]
+
+  [[tool.portray.mkdocs.theme.palette]]
+  scheme = "slate"
+  primary = "teal"
+  accent = "blue"
+
+    [tool.portray.mkdocs.theme.palette.toggle]  
+    icon = "material/theme-light-dark"
+    name = "Switch to light mode"
+
+  [[tool.portray.mkdocs.theme.palette]]
+  scheme = "default"
+  primary = "teal"
+  accent = "blue"
+
+    [tool.portray.mkdocs.theme.palette.toggle]
+    icon = "material/theme-light-dark"
+    name = "Switch to dark mode"
+
+# favicon = "docs/icon/....png"
+# logo = "docs/icon/....png"
+
+[tool.portray.mkdocs.theme.icon]
+repo='fontawesome/brands/gitlab'

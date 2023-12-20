@@ -57,7 +57,9 @@ col = ItemCollection.from_file(col_path)
 col
 
 # %%
-col.items= [drop_assets_without_proj(i) for i in col]
+# Drop non ratser assets
+col.drop_non_raster(inplace=True)
+col
 
 # %%
 # ### Apply items

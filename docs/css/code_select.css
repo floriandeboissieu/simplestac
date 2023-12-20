@@ -1,0 +1,7 @@
+/*
+    https://mkdocstrings.github.io/recipes/?h=pycon#prevent-selection-of-prompts-and-output-in-python-code-blocks
+    needs extension pymdownx.superfences otherwise won't work on code blocks
+*/
+.language-pycon .gp { /* Generic.Prompt, Generic.Output .language-pycon .go  */
+    user-select: none !important;
+}

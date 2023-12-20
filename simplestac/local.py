@@ -1,4 +1,4 @@
-""""
+"""
 This module aims at providing a simple interface to build a STAC ItemCollection
 from a series of scenes/images in local files.
 """

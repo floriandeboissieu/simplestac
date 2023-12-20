@@ -85,6 +85,7 @@ See a simple [Theia format](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-
 ## Extended pystac.ItemCollection
 
 In `simplestac`, several methods have been added to the class `pystac.ItemCollection` in order to:
+
   - sort items,
   - filter (subset),
   - convert to xarray (with stackstac),
@@ -107,4 +108,4 @@ ax = col.to_geodataframe().iloc[:1,:].to_crs(roi.crs).boundary.plot(color="red")
 roi.plot(ax=ax)
 ```
 
-See [examples](https://gitlab.irstea.fr/umr-tetis/stac/simplestac/-/tree/main/simplestac/examples)
+See [examples](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/tree/main/examples)

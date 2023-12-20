@@ -1,0 +1,20 @@
+name: simplestac
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  # constrain python version for portray
+  - python < 11
+  - mkdocs
+  - mkdocs-material
+  - mdx_truly_sane_lists
+  - python-markdown-math
+  - pymdown-extensions
+  # - mkdocstrings
+  # - mkdocstrings-python
+  # - mkdocs-gen-files
+  # - mkdocs-literate-nav
+  - portray
+  - pip:
+    - mdx-breakless-lists
+    - mkdocs-section-index

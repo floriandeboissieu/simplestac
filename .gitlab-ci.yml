@@ -1,0 +1,19 @@
+stages:
+  - pages
+
+pages:
+  stage: pages
+  image: micromamba/dev-env
+  script:
+    - micromamba env create -n simplestac-doc -f environment.yml
+    - micromamba env update -n simplestac-doc -f environment-docs.yml
+    - micromamba activate simplestac-doc
+    - portray as_html -c pyproject_doc.toml
+    - mv site public
+  artifacts:
+    paths:
+      - public
+  only:
+   - master
+   - pages
+

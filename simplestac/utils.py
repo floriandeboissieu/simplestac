@@ -429,11 +429,11 @@ class ExtendPystacClasses:
 class ItemCollection(pystac.ItemCollection, ExtendPystacClasses):
     pass
 
-class Catalog(pystac.Catalog, ExtendPystacClasses):
-    pass
+# class Catalog(pystac.Catalog, ExtendPystacClasses):
+#     pass
 
-class Collection(pystac.Collection, ExtendPystacClasses):
-    pass
+# class Collection(pystac.Collection, ExtendPystacClasses):
+#     pass
 
 
 def write_assets(x: Union[ItemCollection, pystac.Item],
