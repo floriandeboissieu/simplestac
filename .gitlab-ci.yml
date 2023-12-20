@@ -7,7 +7,7 @@ pages:
   script:
     - micromamba create -f environment.yml
     - eval "$(micromamba shell hook --shell bash)" 
-    - micromamba activate simplestac-doc
+    - micromamba activate simplestac
     - micromamba env list
     - micromamba install -f environment-docs.yml
     - pip install -e .
