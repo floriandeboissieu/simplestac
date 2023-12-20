@@ -7,9 +7,9 @@ pages:
   script:
     - micromamba create -n simplestac-doc -f environment.yml
     - micromamba update -n simplestac-doc -f environment-docs.yml
-    - micromamba activate simplestac-doc
-    - pip install -e .
-    - portray as_html -c pyproject_doc.toml
+    # - micromamba activate simplestac-doc
+    - micromamba run -n simplestac-doc pip install -e .
+    - micromamba run -n simplestac-doc portray as_html -c pyproject_doc.toml
     - mv site public
   artifacts:
     paths:
