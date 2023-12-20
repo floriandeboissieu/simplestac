@@ -14,6 +14,7 @@ __Build a STAC ItemCollection based on local raster data:__
 - function `build_item_collection` to build your small `ItemCollection` with a template for further metadata
   
 __Extends class `pystac.ItemCollection` with methods to simplify data manipulation:__
+
 - sort collection items
 - filter (subset) cube by spatio-temporal coordinates and assets
 - convert to a lazy dask `DataArray` cube
@@ -21,6 +22,7 @@ __Extends class `pystac.ItemCollection` with methods to simplify data manipulati
 - apply a function to each item or on a rolling window, write and add the created assets to current collection.
 
 __Additional functions:__
+
 - apply formula to a `DataArray` cube (e.g. "(B08-B04)/(B08+B04)")
 - write collection assets to local files
 
@@ -77,6 +79,7 @@ Anyone can make his own format depending on the naming of the file names.
 The parsing is based on regex patterns.
 
 The expected minimal structure is a json with the following:
+
 - item: metadata that are item-wise (i.e. independent of the asset)
   - pattern: how to parse the item id from the item directory
   - datetime: relative to datetime parsing (pattern, format)
@@ -87,7 +90,9 @@ The expected minimal structure is a json with the following:
 See a simple [Theia format](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/simplestac/formats/S2_L2A_THEIA.json?ref_type=heads) made for the example.
 
 ## Extended pystac.ItemCollection
+
 After executing previous code, the following:
+
 1. converts the created ItemCollection into a geodataframe and plots its bouding box over the geometry of a region of interest,
 1. computes NDVI over a collection subset and plots it.
 
