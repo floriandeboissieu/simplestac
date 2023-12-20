@@ -2,6 +2,8 @@
 
 SimpleSTAC eases the use of pystac.
 
+[See Documentation](https://simplestac-umr-tetis-stac-e5919c76d0463bc6d6669060b20af6f73f2a8.pages.mia.inra.fr)
+
 # Install
 
 __Recommendation:__ install the package in a virtual environment. See
