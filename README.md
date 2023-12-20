@@ -16,12 +16,12 @@ __Build a STAC ItemCollection based on local raster data:__
 __Extends class `pystac.ItemCollection` with methods to simplify data manipulation:__
 - sort collection items
 - filter (subset) cube by spatio-temporal coordinates and assets
-- convert to a lazy dask `dataarray` cube
+- convert to a lazy dask `DataArray` cube
 - convert to a geodataframe
 - apply a function to each item or on a rolling window, write and add the created assets to current collection.
 
 __Additional functions:__
-- apply formula to a `dataarray` cube (e.g. "(B08-B04)/(B08+B04)")
+- apply formula to a `DataArray` cube (e.g. "(B08-B04)/(B08+B04)")
 - write collection assets to local files
 
 # Install
@@ -87,8 +87,12 @@ The expected minimal structure is a json with the following:
 See a simple [Theia format](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/simplestac/formats/S2_L2A_THEIA.json?ref_type=heads) made for the example.
 
 ## Extended pystac.ItemCollection
-After executing previous code, the following converts the ItemCollection into 
-a geodataframe and plots its bouding box over the geometry of a region of interest :
+After executing previous code, the following:
+1. converts the created ItemCollection into a geodataframe and plots its bouding box over the geometry of a region of interest,
+1. computes NDVI over a collection subset and plots it.
+
+The same could be done with a remote item collection, see [examples](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples).
+
 ```python
 import geopandas as gpd
 from simplestac.utils import apply_formula
@@ -121,5 +125,3 @@ assert "NDVI" in arr.band.values
 mask = arr.sel(band="CLM") > 0
 arr.sel(band="NDVI").where(~mask).isel(time=range(4)).plot(col="time", col_wrap=2)
 ```
-
-The same could be done with a remote item collection, see [examples](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples).
