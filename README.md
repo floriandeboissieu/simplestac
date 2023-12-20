@@ -26,15 +26,18 @@ __Additional functions:__
 - apply formula to a `DataArray` cube (e.g. "(B08-B04)/(B08+B04)")
 - write collection assets to local files
 
-# Install
+# Get started
 
-__Recommendation:__ install the package in a virtual environment. See
+## Recommendations
+
+Install the package in a virtual environment. See
 [miniforge](https://github.com/conda-forge/miniforge) for conda/mamba, or 
 [venv](https://docs.python.org/3/library/venv.html) for virtualenv.
 
+## Install
 Within a conda env:
 ```shell
-mamba env create -n simplestac -f https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/raw/main/environment.yml
+mamba create -n simplestac --file https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/raw/main/environment.yml
 ```
 
 Within a virtualenv:
@@ -42,7 +45,17 @@ Within a virtualenv:
 pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac
 ```
 
-__Known issues:__
+## Notebooks
+Example notebooks make use of optional packages such as `ipykernel` or `xpystac`
+which can be installed with:
+```shell
+# in conda env
+mamba install -n simplestac --file https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/raw/main/environment-notebooks.yml
+# or in venv
+pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac.git#egg=simplestac[notebook]
+```
+
+## Known issues
 
 On Windows, the installation of `simplestac` may end with an error due to `Filename too long` in `stac-static`, a dependency of `simplestac`. Git can be configured to manage such filenames:
 ```shell
