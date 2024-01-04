@@ -5,6 +5,6 @@ channels:
 dependencies:
   # mamba env update -n simplestac -f environment-notebook.yml
   # notebooks
-  - ipykernels
+  - ipykernel
   - planetary-computer
   - xpystac

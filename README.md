@@ -37,7 +37,7 @@ Install the package in a virtual environment. See
 ## Install
 Within a conda env:
 ```shell
-mamba create -n simplestac --file https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/raw/main/environment.yml
+mamba env create -n simplestac --file https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/raw/main/environment.yml
 ```
 
 Within a virtualenv:
@@ -50,7 +50,7 @@ Example notebooks make use of optional packages such as `ipykernel` or `xpystac`
 which can be installed with:
 ```shell
 # in conda env
-mamba install -n simplestac --file https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/raw/main/environment-notebooks.yml
+mamba env update -n simplestac --file https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/raw/main/environment-notebook.yml
 # or in venv
 pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac.git#egg=simplestac[notebook]
 ```
