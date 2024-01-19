@@ -345,9 +345,21 @@ class MyStacItem(object):
         """
         image_dir = self.image_dir
         image_fmt = self.fmt["item"]
-        dt = re.match(image_fmt["datetime"]["pattern"], image_dir.name)
-        if dt is not None:
-            dt = to_datetime(dt.group(1), format=image_fmt["datetime"]["format"])
+
+        dt_dict = {}
+        for k,v in image_fmt.items():
+            if k.endswith("datetime"):
+                if "pattern" in v:
+                    dt = re.match(v["pattern"], image_dir.name)
+                    if dt is not None:
+                        dt = to_datetime(dt.group(1), format=v["format"])
+                        dt_dict[k] = dt
+                
+        # if "datetime" in image_fmt:
+        #     dt = re.match(image_fmt["datetime"]["pattern"], image_dir.name)
+        #     if dt is not None:
+        #         dt = to_datetime(dt.group(1), format=image_fmt["datetime"]["format"])
+        
 
         properties={}
         if "properties" in image_fmt:
@@ -389,13 +401,15 @@ class MyStacItem(object):
         # the href would be filled when saved.
         stac_fields = dict(
             id = id,
-            datetime = dt,
+            datetime=None,
             properties = properties,
             assets = {k:v for k,v in assets},
             bbox = list(bbox_wgs), # converts tuple to list
             geometry = geometry,
             stac_extensions = [eo.SCHEMA_URI, projection.SCHEMA_URI]
         )
+
+        stac_fields.update(dt_dict)
 
         return stac_fields
 
