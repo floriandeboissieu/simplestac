@@ -464,6 +464,18 @@ def stac_asset_parser(item_dir, fmt):
 class MyStacItem(object):
     """Create a STAC item from a local directory.
     
+    Parameters
+    ----------
+    fmt : dict
+        The format of the item to parse.
+        See `collection_format`.
+    item_parser : function
+        The function to parse the item information.
+        See `stac_item_parser` for an example.
+    asset_parser : function
+        The function to parse the asset information.
+        See `stac_asset_parser` for an example.
+
     Examples
     --------
     >>> from path import Path
