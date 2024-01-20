@@ -307,93 +307,92 @@ def stac_asset_info_from_raster(band_file, band_fmt=None):
     
     return stac_fields
 
+def stac_item_parser(item_dir, fmt, assets=None):
+    """Parse the item information from the scene directory.
 
-class MyStacItem(object):
-    """Create a STAC item from a local directory."""
+    Parameters
+    ----------
+    item_dir : str
+        The directory path of the scene.
+    fmt : dict
+        The format of the images.
+        See `collection_format`.
+    assets : dict, optional
+        The assets information, by default None.
+        See `stac_asset_info_from_raster`.
 
-    def __init__(self, image_dir, fmt):
-        """
-        Initializes a new instance of the class.
+    Returns
+    -------
+    dict
+        The STAC item information.
+    
+    Examples
+    --------
+    >>> from path import Path
+    >>> from simplestac.local import collection_format, stac_item_parser
+    >>> item_dir = Path.cwd() / "data" / "s2_scenes" / "SENTINEL2A_20151203-105818-575_L2A_T31UFQ_D_V1-1"
+    >>> fmt = collection_format("S2_L2A_THEIA")
+    >>> item = stac_item_parser(item_dir, fmt)
+    """
 
-        Parameters
-        ----------
-        image_dir : str
-            The directory path of the scene.
-        fmt : str
-            The format of the images.
-            See `collection_format`.
+    item_dir = Path(item_dir).expand()
+    fmt = fmt["item"]
 
-        """
-        image_dir = Path(image_dir).expand()
-        self.image_dir = image_dir
-        self.fmt = fmt
-    def get_item_info(self, assets=None):
-        """Get the item information as a dictionary in STAC format.
+    # parsing properties
+    dt_dict = {} # datetime
+    properties={}
+    if "properties" in fmt:
+        properties = dict()
+        for k, v in fmt["properties"].items():
+            if isinstance(v, str):
+                properties[k] = v
+            if "pattern" in v:
+                match = re.match(v["pattern"], item_dir.name)
+                if match is not None:
+                    s = match.group(1)
+                    if k.endswith("datetime") and "format" in v:
+                        dt_dict[k] = to_datetime(s, format=v["format"])
+                    else:
+                        properties[k] = s
+                        # dt_dict[k] = dt # str(dt)+"Z"
 
-        The information is based on the item directory name.
-        It typically search for a datetime pattern and properties defined in `fmt`.
+    # datetime defined at item level for retro-compatibility
+    for k,v in fmt.items():
+        if k.endswith("datetime"):
+            if "pattern" in v:
+                dt = re.match(v["pattern"], item_dir.name)
+                if dt is not None:
+                    dt = to_datetime(dt.group(1), format=v["format"])
+                    dt_dict[k] = dt
+    
+    # parsing id, default is the image directory name
+    if "id" in fmt and "pattern" in fmt["id"]:
+        match = re.match(fmt["id"]["pattern"], item_dir.name)
+        if match is None:
+            raise(Exception(f"Pattern {fmt['id']['pattern']} not found in {item_dir}"))
+        id = match.group(1)
+    else:
+        id = item_dir.name
 
-        Parameters
-        ----------
-        assets : list, optional
-            The list of assets, by default None.
-
-        Returns
-        -------
-        dict
-            The STAC item information.
-        """
-        image_dir = self.image_dir
-        image_fmt = self.fmt["item"]
-
-        dt_dict = {}
-        for k,v in image_fmt.items():
-            if k.endswith("datetime"):
-                if "pattern" in v:
-                    dt = re.match(v["pattern"], image_dir.name)
-                    if dt is not None:
-                        dt = to_datetime(dt.group(1), format=v["format"])
-                        dt_dict[k] = dt
-                
-        # if "datetime" in image_fmt:
-        #     dt = re.match(image_fmt["datetime"]["pattern"], image_dir.name)
-        #     if dt is not None:
-        #         dt = to_datetime(dt.group(1), format=image_fmt["datetime"]["format"])
-        
-
-        properties={}
-        if "properties" in image_fmt:
-            properties = dict()
-            for k, v in image_fmt["properties"].items():
-                if isinstance(v, str):
-                    properties[k] = v
-                if "pattern" in v:
-                    match = re.match(v["pattern"], image_dir.name)
-                    if match is not None:
-                        properties[k] = match.group(1)
-            
-            
-        id = image_dir.name
-
-        ### common to any other item ###
-        geometry = bbox = None
-        if assets is not None:
-            df_assets = DataFrame(assets, columns=["key", "asset"])
-            epsg_list = df_assets["asset"].apply(lambda x: x.extra_fields["proj:epsg"])
-            bbox_list = df_assets["asset"].apply(lambda x: box(*x.extra_fields["proj:bbox"]))
-            if len(epsg_list.unique()) == 1:
-                epsg = epsg_list[0]
-                bbox = unary_union(bbox_list).bounds
-                bbox_wgs, geometry = bbox_to_wgs(bbox, epsg)
-                properties.update({
-                    "proj:epsg" : int(epsg)
-                })
-                # remove epsg from extra_fields
-                df_assets["asset"].apply(lambda x: x.extra_fields.pop("proj:epsg"))
-            else:
-                g = unary_union([gpd.GeoSeries(bbox, crs=epsg).to_crs(4326).geometry for bbox, epsg in zip(bbox_list, epsg_list)])
-                bbox_wgs = g.bounds
-                geometry = json.loads(to_geojson(g))
+    ### common to any other item ###
+    geometry = bbox = None
+    if assets is not None:
+        df_assets = DataFrame(assets, columns=["key", "asset"])
+        epsg_list = df_assets["asset"].apply(lambda x: x.extra_fields["proj:epsg"])
+        bbox_list = df_assets["asset"].apply(lambda x: box(*x.extra_fields["proj:bbox"]))
+        if len(epsg_list.unique()) == 1:
+            epsg = epsg_list[0]
+            bbox = unary_union(bbox_list).bounds
+            bbox_wgs, geometry = bbox_to_wgs(bbox, epsg)
+            properties.update({
+                "proj:epsg" : int(epsg)
+            })
+            # remove epsg from extra_fields
+            df_assets["asset"].apply(lambda x: x.extra_fields.pop("proj:epsg"))
+        else:
+            g = unary_union([gpd.GeoSeries(bbox, crs=epsg).to_crs(4326).geometry for bbox, epsg in zip(bbox_list, epsg_list)])
+            bbox_wgs = g.bounds
+            geometry = json.loads(to_geojson(g))
 
         
         # In case of ItemCollection, href is not included as it designates the json file
@@ -413,35 +412,95 @@ class MyStacItem(object):
 
         return stac_fields
 
+def stac_asset_parser(item_dir, fmt):
+    """Parse the asset information from the scene directory.
 
-    def create_assets(self):
-        """Looks for the bands in the directory and 
-        create the asset information for the item."""
+    Parameters
+    ----------
+    item_dir : str
+        The directory path of the scene.
+    fmt : dict
+        Containing item "item_assets" with the asset format of the scene.
+        See `collection_format`.
 
-        asset_list = []
-        all_files = [f for f in self.image_dir.walkfiles()]
-        bands = self.fmt["item_assets"]
-        for key, band in bands.items():
-            if "pattern" not in band:
-                continue
-            band_files = [f for f in all_files if re.match(band["pattern"]+"$", f.name)]
-            if len(band_files)==0:
-                logger.debug(f"Band '{key}' not found in {self.image_dir}")
-                continue
-            stac_info = stac_asset_info_from_raster(band_files[0], band)
-            asset_list.append((key, pystac.Asset.from_dict(stac_info)))
-        
-        # sort assets in the order of theia_band_index
-        df =  DataFrame(asset_list, columns=['band', 'asset'])
-        assets = list(df.itertuples(index=False, name=None))
-
-        return assets
+    Returns
+    -------
+    dict
+        The STAC asset information.
     
-    def create_item(self, validate=True):
+    Examples
+    --------
+    >>> from path import Path
+    >>> from simplestac.local import collection_format, stac_asset_parser
+    >>> item_dir = Path.cwd() / "data" / "s2_scenes" / "SENTINEL2A_20151203-105818-575_L2A_T31UFQ_D_V1-1"
+    >>> fmt = collection_format("S2_L2A_THEIA")
+    >>> assets = stac_asset_parser(item_dir, fmt)
+    """
+    item_dir = Path(item_dir).expand()
+    fmt = fmt["item_assets"]
+
+    # parsing assets
+    asset_list = []
+    all_files = [f for f in item_dir.walkfiles()]
+    bands = fmt
+    for key, band in bands.items():
+        if "pattern" not in band:
+            continue
+        band_files = [f for f in all_files if re.match(band["pattern"]+"$", f.name)]
+        if len(band_files)==0:
+            logger.debug(f"Band '{key}' not found in {item_dir}")
+            continue
+        stac_info = stac_asset_info_from_raster(band_files[0], band)
+        asset_list.append((key, pystac.Asset.from_dict(stac_info)))
+    
+    # sort assets in the order of theia_band_index
+    df =  DataFrame(asset_list, columns=['band', 'asset'])
+    assets = list(df.itertuples(index=False, name=None))
+
+    return assets
+
+
+
+class MyStacItem(object):
+    """Create a STAC item from a local directory."""
+
+    def __init__(self, fmt, item_parser=stac_item_parser, asset_parser=stac_asset_parser):
+        """
+        Initializes a new instance of item creator.
+
+        Parameters
+        ----------
+        fmt : dict
+            The format of the item to parse.
+            See `collection_format`.
+        item_parser : function
+            The function to parse the item information.
+            See `stac_item_parser` for an example.
+        asset_parser : function
+            The function to parse the asset information.
+            See `stac_asset_parser` for an example.
+        """
+        # if item_dir is not None:
+        #     self.item_dir = item_dir
+        self.fmt = fmt
+        self.item_parser = item_parser
+        self.asset_parser = asset_parser
+    
+    @property
+    def item_dir(self):
+        return self._item_dir
+    
+    @item_dir.setter
+    def item_dir(self, x):
+        self._item_dir = Path(x).expand()
+    
+    def create_item(self, item_dir, validate=True):
         """Create the item for the scene.
         
         Parameters
         ----------
+        item_dir : str
+            The directory path of the scene.
         validate : bool, optional
             Whether to validate the item structure, by default True
         
@@ -451,10 +510,12 @@ class MyStacItem(object):
             The created item
         """
 
+        self.item_dir = item_dir
         # create assets
-        assets = self.create_assets()
+        assets = self.asset_parser(self.item_dir, self.fmt)
         # prepare item dict
-        stac_info = self.get_item_info(assets)
+        # stac_info = self.get_item_info(assets)
+        stac_info = self.item_parser(self.item_dir, self.fmt, assets)
         
         # create item
         item = pystac.Item(**stac_info)
@@ -464,7 +525,13 @@ class MyStacItem(object):
 
         return item
 
-def build_item_collection(input_dir, fmt, progress=True, validate=True, **kwargs):
+
+
+def build_item_collection(input_dir,
+                          fmt, 
+                          item_parser=stac_item_parser,
+                          asset_parser=stac_asset_parser,
+                          progress=True, validate=True, **kwargs):
     """Build an item collection with the scenes in an input_dir,
     using fmt for parsing items and assets information.
 
@@ -475,6 +542,8 @@ def build_item_collection(input_dir, fmt, progress=True, validate=True, **kwargs
         A list of directories is also possible.
     fmt : dict
         See `collection_format`.
+    item_parser : function, optional
+        The function to parse the item information, by default stac_item_parser.
     progress : bool, optional
         Whether to show a progress bar, by default True
     validate : bool, optional
@@ -487,6 +556,14 @@ def build_item_collection(input_dir, fmt, progress=True, validate=True, **kwargs
     -------
     pystac.ItemCollection
         This collection can then be saved into a unique json file
+    
+    Examples
+    --------
+    >>> from simplestac import build_item_collection
+    >>> from pathlib import Path
+    >>> input_dir = Path.cwd() / "data" / "s2_scenes"
+    >>> fmt = collection_format("S2_L2A_THEIA")
+    >>> col = build_item_collection(input_dir, fmt)
     """
     from simplestac.utils import ItemCollection # avoids circular import
 
@@ -504,8 +581,9 @@ def build_item_collection(input_dir, fmt, progress=True, validate=True, **kwargs
         item_dirs =  [d for d in input_dir.dirs() if re.match(fmt["item"]["pattern"], d.name)]
     items = []
     logger.info("Building item collection...")
+    item_creator = MyStacItem(fmt, item_parser=item_parser, asset_parser=asset_parser)
     for item in tqdm(item_dirs, disable=not progress):
         items.append(
-            MyStacItem(item, fmt).create_item(validate=validate)
+            item_creator.create_item(item, validate=validate)
         )
     return ItemCollection(items, clone_items=False, **kwargs)  
