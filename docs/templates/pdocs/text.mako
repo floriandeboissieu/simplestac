@@ -66,9 +66,18 @@ ${var.docstring}
 <%def name="class_(cls)" buffered="True">
 ${"### " + cls.name}
 
+<%
+  cls_params=cls.params()
+  for i,p in enumerate(cls_params):
+    p12 = p.split("=")
+    if len(p12) > 1 and p12[1].startswith("<function"):
+      p2 = p12[1].split(" ")[1]
+      cls_params[i] = p12[0]+"="+p2
+%>
+
 ```python3
 class ${cls.name}(
-    ${",\n    ".join(cls.params())}
+    ${",\n    ".join(cls_params)}
 )
 ```
 
