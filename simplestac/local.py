@@ -462,7 +462,17 @@ def stac_asset_parser(item_dir, fmt):
 
 
 class MyStacItem(object):
-    """Create a STAC item from a local directory."""
+    """Create a STAC item from a local directory.
+    
+    Examples
+    --------
+    >>> from path import Path
+    >>> from simplestac.local import collection_format, MyStacItem
+    >>> item_dir = Path.cwd() / "data" / "s2_scenes" / "SENTINEL2A_20151203-105818-575_L2A_T31UFQ_D_V1-1"
+    >>> fmt = collection_format("S2_L2A_THEIA")
+    >>> item_creator = MyStacItem(fmt)
+    >>> item = item_creator.create_item(item_dir)
+    """
 
     def __init__(self, fmt, item_parser=stac_item_parser, asset_parser=stac_asset_parser):
         """
