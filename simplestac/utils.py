@@ -405,7 +405,8 @@ class ExtendPystacClasses:
                 res = tuple([None]*Nout)
             else:
                 # compute fun
-                res = fun(subcol.to_xarray(bbox=bbox, geometry=geometry), **kwargs)
+                with xr.set_options(keep_attrs=True):
+                    res = fun(subcol.to_xarray(bbox=bbox, geometry=geometry), **kwargs)
                 if not isinstance(res, tuple):
                     res = (res,)
                 if len(res) != Nout:
@@ -416,6 +417,7 @@ class ExtendPystacClasses:
                     # write result
                     logger.debug("Writing: ", f)
                     write_raster(r, f, overwrite=overwrite)
+                    
             for n, f in zip(name, raster_file):
                 if f.exists():
                     stac_info = stac_asset_info_from_raster(f)
@@ -539,7 +541,9 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
                 logger.debug(f"Reprojecting geometry from {geometry.crs} to {arr.rio.crs}")
                 geometry = geometry.to_crs(arr.rio.crs)
             arr = arr.rio.clip(geometry)
-        res = fun(arr, **kwargs)
+        
+        with xr.set_options(keep_attrs=True): 
+            res = fun(arr, **kwargs)
 
         if not isinstance(res, tuple):
             res = (res,)
