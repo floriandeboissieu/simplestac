@@ -2,7 +2,8 @@ build
 __pycache__
 **.egg-info
 .vscode
+..bfg-report
 .pytest*
-tests/data
+tests/data*
 draft
 examples/data
