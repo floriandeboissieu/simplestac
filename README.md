@@ -4,6 +4,7 @@ __[Documentation](https://simplestac-umr-tetis-stac-e5919c76d0463bc6d6669060b20a
 
 [![licence](https://img.shields.io/badge/Licence-GPL--3-blue.svg)](https://www.r-project.org/Licenses/GPL-3)
 [![python](https://img.shields.io/badge/Python-3-blue.svg)](https://www.python.org)
+[![build status](https://forgemia.inra.fr/umr-tetis/stac/simplestac/badges/main/pipeline.svg)](https://forgemia.inra.fr/umr-tetis/stac/simplestac/pipelines/main/latest)
 
 # Features
 
