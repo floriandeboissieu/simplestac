@@ -1,6 +1,18 @@
 stages:
   - pages
+  - tests
 
+tests:
+  stage: tests
+  image: mambaorg/micromamba
+  script:
+    - micromamba create -y -n simplestac -f environment.yml
+    - eval "$(micromamba shell hook --shell bash)"
+    - micromamba activate simplestac
+    - micromamba env list
+    - pip install -e .
+    - pytest -s
+  
 pages:
   stage: pages
   image: mambaorg/micromamba
