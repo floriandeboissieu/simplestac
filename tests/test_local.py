@@ -1,6 +1,7 @@
 from simplestac.local import collection_format, build_item_collection
 from simplestac.utils import write_raster, apply_formula
 import xarray as xr
+import pystac
 
 def test_formatting():
     fmt = collection_format()
@@ -35,18 +36,21 @@ def test_datetime(s2scene_dir):
     col = build_item_collection(s2scene_dir, fmt)
     assert len(col) == len(s2scene_dir.dirs())
 
-def test_apply_items(s2scene_dir):
+def test_apply_items(s2scene_dir, roi):
     col = build_item_collection(s2scene_dir, collection_format())
     NDVI_dir = s2scene_dir.parent / "NDVI"
     NDVI_dir.rmtree_p()
     col.apply_items(
         apply_formula, 
         name="NDVI",
+        geometry=roi.geometry,
         formula="((B08-B04)/(B08+B04))",
         output_dir=NDVI_dir,
         inplace=True)
     assert "NDVI" in col.items[-1].assets
     assert len(NDVI_dir.files()) == len(col)
+    # check if COG
+    assert col.items[-1].assets["NDVI"].media_type == pystac.MediaType.COG
 
 def test_apply_rolling(s2scene_dir):
     col = build_item_collection(s2scene_dir, collection_format())

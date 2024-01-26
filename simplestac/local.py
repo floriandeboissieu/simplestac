@@ -27,6 +27,8 @@ from shapely.ops import unary_union
 from tqdm import tqdm
 import warnings
 
+from rio_cogeo.cogeo import cog_validate
+
 EPSG_4326 = rasterio.crs.CRS.from_epsg(4326)
 
 logger = logging.getLogger(__name__)
@@ -54,11 +56,12 @@ def get_rio_info(file):
         meta = src.meta
         media_type = get_media_type(src)
         gsd = src.res[0]
-    # If needed at some point, we could test MediaType.COG with rio_cogeo.cogeo.cog_validate
-    # from rio_cogeo.cogeo import cog_validate
-    # iscog, _, _ = cog_validate(band_file)
-    # if iscog:
-    #     media_type = pystac.MediaType.COG
+    
+    # If needed at some point, we could test MediaType.COG with rio_cogeo.cogeo.cog_validate  
+    if media_type == pystac.MediaType.GEOTIFF:
+        iscog, _, _ = cog_validate(file)
+        if iscog:
+            media_type = pystac.MediaType.COG
         
     return bbox, media_type, gsd, meta
 
