@@ -9,6 +9,7 @@ dependencies:
   - ipykernel
   - path
   - rioxarray
+  - rio-cogeo
   - stackstac
   - tqdm
   
