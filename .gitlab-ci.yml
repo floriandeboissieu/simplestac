@@ -1,28 +1,25 @@
 stages:
-  - pages
   - tests
+  - pages
 
-tests:
-  stage: tests
+default:
   image: mambaorg/micromamba
-  script:
+  before_script:
     - micromamba create -y -n simplestac -f environment.yml
     - eval "$(micromamba shell hook --shell bash)"
     - micromamba activate simplestac
     - micromamba env list
     - pip install -e .
+
+tests:
+  stage: tests
+  script:
     - pytest -s
   
 pages:
   stage: pages
-  image: mambaorg/micromamba
   script:
-    - micromamba create -y -n simplestac -f environment.yml
     - micromamba install -y -n simplestac -f environment-doc.yml
-    - eval "$(micromamba shell hook --shell bash)" 
-    - micromamba activate simplestac
-    - micromamba env list
-    - pip install -e .
     - portray as_html -c pyproject_doc.toml
     - mv site public
   artifacts:
