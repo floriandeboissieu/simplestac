@@ -20,7 +20,7 @@ import pandas as pd
 from pandas import DataFrame, to_datetime
 import pystac
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
-from pystac.extensions import eo, projection
+from pystac.extensions import eo, projection, raster
 from shapely.geometry import box
 from shapely import to_geojson
 from shapely.ops import unary_union
@@ -56,6 +56,9 @@ def get_rio_info(file):
         meta = src.meta
         media_type = get_media_type(src)
         gsd = src.res[0]
+        tags = src.tags()
+        scales = src.scales
+        offsets = src.offsets
     
     # If needed at some point, we could test MediaType.COG with rio_cogeo.cogeo.cog_validate  
     if media_type == pystac.MediaType.GEOTIFF:
@@ -63,7 +66,7 @@ def get_rio_info(file):
         if iscog:
             media_type = pystac.MediaType.COG
         
-    return bbox, media_type, gsd, meta
+    return bbox, media_type, gsd, meta, tags, scales, offsets
 
 def get_media_type(
     src_dst: Union[DatasetReader, DatasetWriter, WarpedVRT, MemoryFile]
@@ -149,6 +152,43 @@ def stac_proj_info(bbox, gsd, meta):
     proj_info.update(gsd = gsd)
     
     return proj_info
+
+def stac_raster_info(meta, tags, scales, offsets):
+    """Raster information returned in the STAC format.
+
+    Parameters
+    ----------
+    meta : dict
+        Metadata dict returned by rasterio.
+    tags : dict
+        Tags returned by rasterio.
+    scales : list
+        Scales returned by rasterio.
+    offsets : list
+        Offsets returned by rasterio.
+
+    Returns
+    -------
+    dict
+        bands
+        with prefix `raster:`
+    """
+    bands = [{}]
+    if "nodata" in meta and meta["nodata"] is not None:
+        bands[0]["nodata"] = meta["nodata"]
+    if "AREA_OR_POINT" in tags:
+        bands[0]["sampling"] = tags["AREA_OR_POINT"].lower()
+    if "dtype" in meta:
+        bands[0]["datatype"] = meta["dtype"]
+    if "resolution" in tags:
+        bands[0]["spatial_resolution"] = tags["resolution"]
+    if scales is not None:
+        bands[0]["scale"] = scales[0]
+    if offsets is not None:
+        bands[0]["offset"] = offsets[0]
+    
+    return {"raster:bands": bands}
+
 
 def bbox_to_geom(bbox):
     """
@@ -289,7 +329,7 @@ def stac_asset_info_from_raster(band_file, band_fmt=None):
 
     raster_data = any([r in ["reflectance", "data", "overview"] for r in band_fmt["roles"]])
     if raster_data:
-        bbox, media_type, gsd, meta = get_rio_info(band_file)
+        bbox, media_type, gsd, meta, tags, scales, offsets = get_rio_info(band_file)
     else:
         media_type = "application/"+band_file.ext[1:]
 
@@ -307,6 +347,8 @@ def stac_asset_info_from_raster(band_file, band_fmt=None):
     # It could be set at the item level otherwise.
     proj_info = stac_proj_info(bbox, gsd, meta)
     stac_fields.update(proj_info)
+    raster_info = stac_raster_info(meta, tags, scales, offsets)
+    stac_fields.update(raster_info)
     
     return stac_fields
 
@@ -408,7 +450,7 @@ def stac_item_parser(item_dir, fmt, assets=None):
             assets = {k:v for k,v in assets},
             bbox = list(bbox_wgs), # converts tuple to list
             geometry = geometry,
-            stac_extensions = [eo.SCHEMA_URI, projection.SCHEMA_URI]
+            stac_extensions = [eo.SCHEMA_URI, projection.SCHEMA_URI, raster.SCHEMA_URI]
         )
 
         stac_fields.update(dt_dict)

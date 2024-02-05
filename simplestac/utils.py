@@ -273,6 +273,7 @@ class ExtendPystacClasses:
                     datetime=None,
                     bbox=None,
                     geometry=None,
+                    writer_args=None,
                     progress=True,
                     **kwargs):
         """
@@ -298,10 +299,12 @@ class ExtendPystacClasses:
             A bounding box to clip_box the items with. Defaults to None.
         geometry : shapely.geometry, optional
             A geometry to clip the items with. Defaults to None.
+        writer_args : dict or list of dict, optional
+            Additional keyword arguments to pass to writer_raster.
         progress : bool, optional
             Whether to show a progress bar. Defaults to True.
         **kwargs
-            Additional keyword arguments to pass to the function.
+            Additional keyword arguments passed to function `fun`.
 
         Returns
         -------
@@ -321,6 +324,7 @@ class ExtendPystacClasses:
             apply_item(item, fun, name=name, output_dir=output_dir,
                             overwrite=overwrite, copy=False, 
                             bbox=bbox, geometry=geometry,
+                            writer_args=writer_args,
                             **kwargs)
         if not inplace:
             return x
@@ -335,6 +339,7 @@ class ExtendPystacClasses:
                       datetime=None,
                       bbox=None,
                       geometry=None,
+                      writer_args=None,
                       progress=True,
                       **kwargs):
         """
@@ -363,10 +368,12 @@ class ExtendPystacClasses:
             A bounding box to clip_box the items with. Defaults to None.
         geometry : shapely.geometry, optional
             A geometry to clip the items with. Defaults to None.
+        writer_args : dict or list of dict, optional
+            Additional keyword arguments to pass to writer_raster.
         progress : bool, optional
             Whether to show a progress bar. Defaults to True.
         **kwargs
-            Additional keyword arguments to pass to the function.
+            Additional keyword arguments to pass to function `fun`.
 
         Returns
         -------
@@ -388,8 +395,23 @@ class ExtendPystacClasses:
             name = [name]
         if isinstance(output_dir, str):
             output_dir = [output_dir]
+        if writer_args is None:
+            writer_args = [{}]
+        if isinstance(writer_args, dict):
+            writer_args = [writer_args]
+
         if len(name) != len(output_dir):
-            raise ValueError("output_dir must have the same length as name")
+            if len(output_dir)==1:
+                output_dir = output_dir*len(name)
+            else:
+                raise ValueError("Argument `output_dir` must have length 1 or the same length as `name`.")
+
+        if len(name) != len(writer_args):
+            if len(writer_args)==1:
+                writer_args = writer_args*len(name)
+            else:
+                raise ValueError("Argument `writer_args` must have length 1 or the same length as `name`.")
+        
         Nout = len(name)
         
         output_dir = [Path(d).expand().mkdir_p() for d in output_dir] # make sure they exist 
@@ -411,12 +433,13 @@ class ExtendPystacClasses:
                     res = (res,)
                 if len(res) != Nout:
                     raise ValueError(f"Expected {Nout} outputs, got {len(res)}")
-                for r,f in zip(res, raster_file):
+                for n,r,f,wa in zip(name, res, raster_file, writer_args):
                     if r is None:
                         continue
                     # write result
                     logger.debug("Writing: ", f)
-                    write_raster(r, f, overwrite=overwrite)
+                    r.name = n
+                    write_raster(r, f, overwrite=overwrite, **wa)
                     
             for n, f in zip(name, raster_file):
                 if f.exists():
@@ -474,7 +497,7 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
             write_raster(arr.sel(id=id, band=b), file, **kwargs)
 
 def apply_item(x, fun, name, output_dir, overwrite=False,
-               copy=True, bbox=None, geometry=None, **kwargs):
+               copy=True, bbox=None, geometry=None, writer_args=None, **kwargs):
     """
     Applies a function to an item in a collection, 
     saves the result as a raster file and 
@@ -520,8 +543,23 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
         name = [name]
     if isinstance(output_dir, str):
         output_dir = [output_dir]
+    if writer_args is None:
+        writer_args = {}
+    if isinstance(writer_args, dict):
+        writer_args = [writer_args]
+
     if len(name) != len(output_dir):
-        raise ValueError("output_dir must have the same length as name")
+        if len(output_dir)==1:
+            output_dir = output_dir*len(name)
+        else:
+            raise ValueError("Argument `output_dir` must have length 1 or the same length as `name`.")
+
+    if len(name) != len(writer_args):
+        if len(writer_args)==1:
+            writer_args = writer_args*len(name)
+        else:
+            raise ValueError("Argument `writer_args` must have length 1 or the same length as `name`.")
+    
     Nout = len(name)
     output_dir = [Path(d).expand().mkdir_p() for d in output_dir] 
     
@@ -549,12 +587,13 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
             res = (res,)
         if len(res) != Nout:
             raise ValueError(f"Expected {Nout} outputs, got {len(res)}")
-        for r,f in zip(res, raster_file):
+        for n,r,f,wa in zip(name, res, raster_file, writer_args):
             if r is None:
                 continue
             # write result
+            r.name=n
             logger.debug("Writing: ", f)
-            write_raster(r, f, overwrite=overwrite)
+            write_raster(r, f, overwrite=overwrite, **wa)
     for n, f in zip(name, raster_file):
         if f.exists():
             stac_info = stac_asset_info_from_raster(f)
@@ -581,7 +620,7 @@ def drop_assets_without_proj(item, inplace=False):
 
 ################## Some useful xarray functions ################
 
-def write_raster(x: xr.DataArray, file, driver="COG", overwrite=False, **kwargs):
+def write_raster(x: xr.DataArray, file, driver="COG", overwrite=False, encoding=None, **kwargs):
     """
     Write a raster file from an xarray DataArray.
 
@@ -608,6 +647,8 @@ def write_raster(x: xr.DataArray, file, driver="COG", overwrite=False, **kwargs)
         return
     if x.dtype == 'bool':
         x = x.astype('uint8')
+    if encoding is not None:
+        x = x.rio.update_encoding(encoding)
     x.rio.to_raster(file, driver=driver, **kwargs)
 
 def apply_formula(x, formula):

@@ -133,12 +133,17 @@ roi = roi.to_crs(subcoll.to_xarray().crs)
 subcoll.to_xarray(
     geometry=roi.geometry, 
     assets=['B08', 'B8A']).isel(time=range(2)).plot(row='time', col='band')
+
 # %%
 # ## Apply items
-# The method `apply_items`` applies to each item
+# The method `apply_items` applies to each item
 # a function that returns one or more xarray.DataArray,
-# saves the result in raster file, and
+# writes the result in raster file, and
 # includes it as a new asset in the item.
+#
+# The rasters are encoded by the way in int16,
+# with a scale factor of 0.001, an offset of 0.0,
+# and a nodata value of 2**15 - 1.
 # For the NDVI for example:
 coll.apply_items(
     fun=apply_formula, # a function that returns one or more xarray.DataArray
@@ -147,11 +152,21 @@ coll.apply_items(
     output_dir=res_dir / "NDVI",
     datetime="2018-01-01/..",
     geometry=roi.geometry,
-    inplace=True
+    inplace=True,
+    writer_args=dict(
+        encoding=dict(
+            dtype="int16", 
+            scale_factor=0.001,
+            add_offset=0.0,
+            _FillValue= 2**15 - 1,
+        )
+    )
 )
+
 coll.filter(with_assets="NDVI").to_xarray().sel(band="NDVI").isel(time=range(4)).plot(col="time", col_wrap=2)
 # %%
 coll.filter(with_assets="NDVI").to_xarray().sel(band="NDVI").isel(x=150, y=150).plot.line(x="time")
+
 # %%
 # The method `apply_rolling` applies to a function to a group of items in
 # a rolling window.

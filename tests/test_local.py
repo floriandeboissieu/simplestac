@@ -69,19 +69,37 @@ def test_apply_rolling(s2scene_dir):
     assert "B07_diff" in col.items[-1].assets
     assert len(output_dir.files()) == (len(col)-1)
 
-# def test_write_raster(s2scene_dir, roi):
-#     col = build_item_collection(s2scene_dir, collection_format())
-#     arr = col.to_xarray(assets=["B04"], geometry=roi.geometry).isel(time=0)
-#     arr.rio.write_nodata(2**16 - 1, encoded=True).astype("uint16")
-#     write_raster(arr, s2scene_dir.parent / "test.tif")
+  
 
-#     col.apply_items(
-#         apply_formula, 
-#         name="NDVI",
-#         formula="((B08-B04)/(B08+B04))",
-#         output_dir=s2scene_dir.parent / "NDVI",
-#         geometry=roi.geometry,
-#         inplace=True)
+def test_apply_items_raster_args(s2scene_dir, roi):
+    col = build_item_collection(s2scene_dir, collection_format())
+    output_dir = s2scene_dir.parent / "NDVI"
+    output_dir.rmtree_p()
+    col1 = col.apply_items(
+        apply_formula,
+        name="NDVI",
+        formula="((B08-B04)/(B08+B04))",
+        output_dir=output_dir,
+        geometry=roi.geometry,
+        writer_args=dict(
+            encoding=dict(
+                dtype="int16", 
+                scale_factor=0.001,
+                add_offset=0.0,
+                _FillValue= 2**15 - 1,
+            ),
+        )
+    )
     
+    rb = col1[0].assets["NDVI"].extra_fields["raster:bands"][0]
+    assert rb["datatype"] == "int16"
+    assert rb["scale"] == 0.001
+    assert rb["offset"] == 0.0
+    assert rb["nodata"] == 2**15 - 1
+
+    
+############################################################
+    
+
 
     
