@@ -9,17 +9,18 @@ default:
     - eval "$(micromamba shell hook --shell bash)"
     - micromamba activate simplestac
     - micromamba env list
-    - pip install -e .
 
 tests:
   stage: tests
   script:
+    - pip install -e .
     - pytest -s
   
 pages:
   stage: pages
   script:
-    - micromamba install -y -n simplestac -f environment-doc.yml
+    - micromamba env update -n simplestac -f environment-doc.yml
+    - pip install -e .
     - portray as_html -c pyproject_doc.toml
     - mv site public
   artifacts:
