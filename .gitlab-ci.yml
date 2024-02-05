@@ -4,22 +4,26 @@ stages:
 
 default:
   image: mambaorg/micromamba
-  before_script:
-    - micromamba create -y -n simplestac -f environment.yml
-    - eval "$(micromamba shell hook --shell bash)"
-    - micromamba activate simplestac
-    - micromamba env list
 
 tests:
   stage: tests
   script:
+    - micromamba create -y -n simplestac -f environment.yml
+    - eval "$(micromamba shell hook --shell bash)"
+    - micromamba activate simplestac
+    - micromamba env list
     - pip install -e .
     - pytest -s
   
 pages:
   stage: pages
   script:
-    - micromamba env update -n simplestac -f environment-doc.yml
+    - micromamba install -c conda-forge -y conda-merge
+    - conda-merge environment.yml environment-doc.yml > /tmp/environment-merge.yml
+    - micromamba create -n simplestac -f /tmp/environment-merge.yml
+    - eval "$(micromamba shell hook --shell bash)"
+    - micromamba activate simplestac
+    - micromamba env list
     - pip install -e .
     - portray as_html -c pyproject_doc.toml
     - mv site public
