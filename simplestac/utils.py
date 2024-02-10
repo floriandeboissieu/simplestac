@@ -310,6 +310,30 @@ class ExtendPystacClasses:
         -------
         object
             A clone of the collection if inplace is False, otherwise None.
+
+        Notes
+        -----
+
+        Example of `writer_args` to encode a two outputs in int16 and uint16 respectivelly:
+
+        writer_args=[
+            dict(
+                encoding=dict(
+                    dtype="int16", 
+                    scale_factor=0.001,
+                    add_offset=0.0,
+                    _FillValue= 2**15 - 1,
+                )
+            ),
+            dict(
+                encoding=dict(
+                    dtype="uint16", 
+                    scale_factor= 0.001,
+                    add_offset= -0.01,
+                    _FillValue= 2**15 - 1,
+                )
+            ),
+        ]
         """        
         # could be a method added to item or collection
         if inplace:
@@ -635,12 +659,29 @@ def write_raster(x: xr.DataArray, file, driver="COG", overwrite=False, encoding=
     overwrite : bool, optional
         Whether to overwrite the file if it already exists. Defaults to False.
         If False, a logger.debug message is printed if the file already exists.
+    encoding : dict, optional
+        The encoding to use for the raster file. Defaults to None, i.e. float with np.nan as nodata.
     **kwargs
         Additional keyword arguments to be passed to the xarray rio.to_raster() function.
 
     Returns
     -------
     None
+
+    Notes
+    -----
+    
+    When using encoding scale_factor and add_offset, 
+    the dataset `arr` will be "unscaled" as (arr-offset)/scale 
+    just before writing it to file.
+
+    Example of encoding:
+    encoding=dict(
+        dtype="uint16", 
+        scale_factor=0.001,
+        add_offset=-0.01,
+        _FillValue= 2**15 - 1,
+    )
     """
     if Path(file).exists() and not overwrite:
         logger.debug(f"File already exists, skipped: {file}")
