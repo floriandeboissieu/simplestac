@@ -798,7 +798,7 @@ def apply_formula(x, formula):
         formula = re.sub(f"{bname}", f"x.sel(band='{bname}')", formula)
     
     # replace 'in [...]' by '.isin([...])'
-    formula = re.sub(r"\\s*in\\s*(\[.*\])", ".isin(\\1)", formula)
+    formula = re.sub(r"\s*in\s*(\[.*\])", ".isin(\\1)", formula)
 
     return eval(formula)
 
