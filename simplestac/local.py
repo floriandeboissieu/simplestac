@@ -352,6 +352,44 @@ def stac_asset_info_from_raster(band_file, band_fmt=None):
     
     return stac_fields
 
+def properties_from_assets(assets, update_assets=True):
+    """
+    Get the bbox (WGS84), the geometry (WGS84) and
+    the unique proj::epsg property from assets.
+
+    Parameters
+    ----------
+    assets : dict of pystac.Asset
+        Dict of assets.
+    update_assets : bool, optional
+        Removes the proj::epsg from assets if unique. Defaults to True.
+
+    Returns
+    -------
+    tuple
+        Bounding box in WGS84, WGS84 geometry in GeoJSON, and properties.
+    """
+    properties = {}
+    assets = [(k, v) for k, v in assets.items()]
+    df_assets = DataFrame(assets, columns=["key", "asset"])
+    epsg_list = df_assets["asset"].apply(lambda x: x.extra_fields["proj:epsg"])
+    bbox_list = df_assets["asset"].apply(lambda x: box(*x.extra_fields["proj:bbox"]))
+    if len(epsg_list.unique()) == 1:
+        properties.update({
+            "proj:epsg" : int(epsg_list[0])
+        })
+
+        if update_assets:
+        # remove epsg from extra_fields
+            df_assets["asset"].apply(lambda x: x.extra_fields.pop("proj:epsg"))
+
+    g = unary_union([gpd.GeoSeries(bbox, crs=epsg).to_crs(4326).geometry for bbox, epsg in zip(bbox_list, epsg_list)])
+    bbox_wgs = list(g.bounds)
+    geometry = json.loads(to_geojson(g))
+    return bbox_wgs, geometry, properties
+
+
+
 def stac_item_parser(item_dir, fmt, assets=None):
     """Parse the item information from the scene directory.
 
@@ -418,42 +456,28 @@ def stac_item_parser(item_dir, fmt, assets=None):
         id = match.group(1)
     else:
         id = item_dir.name
+    stac_fields = dict(
+        id = id,
+        datetime=None, # necessary for pystac.Item if datetime is in properties
+        properties = properties,
+        stac_extensions = [eo.SCHEMA_URI, projection.SCHEMA_URI, raster.SCHEMA_URI],
+    )
+    stac_fields.update(dt_dict)
 
     ### common to any other item ###
-    geometry = bbox = None
+    geometry = bbox_wgs = None
     if assets is not None:
-        df_assets = DataFrame(assets, columns=["key", "asset"])
-        epsg_list = df_assets["asset"].apply(lambda x: x.extra_fields["proj:epsg"])
-        bbox_list = df_assets["asset"].apply(lambda x: box(*x.extra_fields["proj:bbox"]))
-        if len(epsg_list.unique()) == 1:
-            epsg = epsg_list[0]
-            bbox = unary_union(bbox_list).bounds
-            bbox_wgs, geometry = bbox_to_wgs(bbox, epsg)
-            properties.update({
-                "proj:epsg" : int(epsg)
-            })
-            # remove epsg from extra_fields
-            df_assets["asset"].apply(lambda x: x.extra_fields.pop("proj:epsg"))
-        else:
-            g = unary_union([gpd.GeoSeries(bbox, crs=epsg).to_crs(4326).geometry for bbox, epsg in zip(bbox_list, epsg_list)])
-            bbox_wgs = g.bounds
-            geometry = json.loads(to_geojson(g))
-
+        bbox_wgs, geometry, assets_props = properties_from_assets(assets)
         
         # In case of ItemCollection, href is not included as it designates the json file
         # where the item description should be saved. Using pystac Collection or Catalog,
         # the href would be filled when saved.
-        stac_fields = dict(
-            id = id,
-            datetime=None,
-            properties = properties,
-            assets = {k:v for k,v in assets},
-            bbox = list(bbox_wgs), # converts tuple to list
+        stac_fields.update(dict(
+            assets = assets,
+            bbox = bbox_wgs, # converts tuple to list
             geometry = geometry,
-            stac_extensions = [eo.SCHEMA_URI, projection.SCHEMA_URI, raster.SCHEMA_URI]
-        )
-
-        stac_fields.update(dt_dict)
+        ))
+        stac_fields["properties"].update(assets_props)
 
         return stac_fields
 
@@ -501,6 +525,7 @@ def stac_asset_parser(item_dir, fmt):
     # sort assets in the order of theia_band_index
     df =  DataFrame(asset_list, columns=['band', 'asset'])
     assets = list(df.itertuples(index=False, name=None))
+    assets = {k:v for k,v in assets}
 
     return assets
 

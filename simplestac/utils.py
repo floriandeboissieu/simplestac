@@ -1,6 +1,7 @@
 """This module aims at providing utilities to work with STAC ItemCollection.
 """
 
+import json
 import logging
 import numpy as np
 from path import Path
@@ -8,6 +9,7 @@ import pandas as pd
 import pystac
 from pystac.item_collection import ItemLike
 import re
+from shapely import from_geojson, to_geojson, intersection
 import stac_static
 from stac_static.search import to_geodataframe
 import stackstac
@@ -17,7 +19,7 @@ from tqdm import tqdm
 from typing import Union
 import warnings
 
-from simplestac.local import stac_asset_info_from_raster
+from simplestac.local import stac_asset_info_from_raster, properties_from_assets
 
 logger = logging.getLogger(__name__)
 
@@ -311,29 +313,6 @@ class ExtendPystacClasses:
         object
             A clone of the collection if inplace is False, otherwise None.
 
-        Notes
-        -----
-
-        Example of `writer_args` to encode a two outputs in int16 and uint16 respectivelly:
-
-        writer_args=[
-            dict(
-                encoding=dict(
-                    dtype="int16", 
-                    scale_factor=0.001,
-                    add_offset=0.0,
-                    _FillValue= 2**15 - 1,
-                )
-            ),
-            dict(
-                encoding=dict(
-                    dtype="uint16", 
-                    scale_factor= 0.001,
-                    add_offset= -0.01,
-                    _FillValue= 2**15 - 1,
-                )
-            ),
-        ]
         """        
         # could be a method added to item or collection
         if inplace:
@@ -393,7 +372,7 @@ class ExtendPystacClasses:
         geometry : shapely.geometry, optional
             A geometry to clip the items with. Defaults to None.
         writer_args : dict or list of dict, optional
-            Additional keyword arguments to pass to writer_raster.
+            Additional keyword arguments to pass to writer_raster. See `apply_item`.
         progress : bool, optional
             Whether to show a progress bar. Defaults to True.
         **kwargs
@@ -484,9 +463,13 @@ class ItemCollection(pystac.ItemCollection, ExtendPystacClasses):
 # class Collection(pystac.Collection, ExtendPystacClasses):
 #     pass
 
+DEFAULT_REMOVE_PROPS = ['.*percentage', 'eo:cloud_cover', '.*mean_solar.*']
 
 def write_assets(x: Union[ItemCollection, pystac.Item],
-                 output_dir: str, bbox=None, **kwargs):
+                 output_dir: str, bbox=None, update=True,
+                 xy_coords='center', 
+                 remove_item_props=DEFAULT_REMOVE_PROPS,
+                 **kwargs):
     """
     Writes item(s) assets to the specified output directory.
 
@@ -501,24 +484,89 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
         The directory to write the assets to.
     bbox : Optional
         The bounding box to clip the assets to.
+    remove_item_props : list of str
+        List of regex patterns to remove from item properties.
     **kwargs
         Additional keyword arguments passed to write_raster.
 
     """    
     if isinstance(x, pystac.Item):
         x = [x]
-    x = ItemCollection(x, clone_items=False)
+    x = ItemCollection(x, clone_items=True)
 
     output_dir = Path(output_dir).expand()
-    arr = x.to_xarray(bbox=bbox).set_xindex("id")
-    df= x.to_geodataframe(wgs84=False).set_index("id")
-    for id in arr.id.values:
-        band_files = pd.DataFrame(df.loc[id].assets).transpose().href.apply(Path)
-        item_dir = (output_dir / id).mkdir_p()
+    items = []
+    for item in x:
+        ic = ItemCollection([item], clone_items=False)
+        arr = ic.to_xarray(bbox=bbox, xy_coords=xy_coords).squeeze("time")
+        item_dir = (output_dir / item.id).mkdir_p()
         for b in arr.band.values:
-            filename = band_files.loc[b].name             
+            filename = '_'.join([item.id, b+'.tif'])
             file = item_dir / f"{filename}"
-            write_raster(arr.sel(id=id, band=b), file, **kwargs)
+            try:
+                write_raster(arr.sel(band=b), file, **kwargs)
+                if file.exists():
+                    stac_info = stac_asset_info_from_raster(file)
+                    if update:
+                        asset_info = item.assets[b].to_dict()
+                        asset_info.update(stac_info)
+                        stac_info = asset_info
+                    asset = pystac.Asset.from_dict(stac_info)
+                    item.add_asset(key=b, asset=asset)
+            except RuntimeError as e:
+                logger.debug(e)
+                logger.debug(f'Skipping asset "{b}" for "{item.id}".')
+                file.remove_p()
+                item.assets.pop(b, None)
+        try:
+            update_item_properties(item, remove_item_props=remove_item_props)
+            items.append(item)
+        except RuntimeError as e:
+            logger.debug(e)
+            logger.info(f'Item "{item.id}" is empty, skipping it.')
+            item_dir.rmtree_p()
+    
+    return ItemCollection(items, clone_items=False)
+
+def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROPS):
+    """Update item bbox, geometry and proj:epsg introspecting assets.
+
+    Parameters
+    ----------
+    x : pystac.Item
+        The item to update.
+    remove_item_props : list of str
+        List of regex patterns to remove from item properties.
+        If None, no properties are removed.
+    
+    Returns
+    -------
+    None
+    """
+
+    bbox, geometry, asset_props = properties_from_assets(x.assets)
+    x.bbox = bbox
+    # as new geometry is a bbox polygon,
+    # intersection with old geometry could be more accurate
+    geom1 = from_geojson(json.dumps(x.geometry))
+    geom2 = from_geojson(json.dumps(geometry))
+    geom3 = intersection(geom1, geom2)
+    if geom3.is_empty:
+        raise RuntimeError("Item geometry is empty.")
+    x.geometry = json.loads(to_geojson(geom3))
+    x.properties.update(asset_props)
+
+    if remove_item_props is not None:
+        pop_props = []
+        for k in x.properties:
+            for p in remove_item_props:
+                if re.match(p, k):
+                    pop_props.append(k)
+        for k in pop_props:
+            x.properties.pop(k)
+
+    
+
 
 def apply_item(x, fun, name, output_dir, overwrite=False,
                copy=True, bbox=None, geometry=None, writer_args=None, **kwargs):
@@ -546,6 +594,9 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
         The bounding box to clip the raster to. Defaults to `None`.
     geometry : shapely.geometry or None, optional
         The geometry to clip the raster to. Defaults to `None`.
+    writer_args : list of dict, optional
+        The encoding to use for the raster file. Defaults to `None`.
+        See Notes for an example.
     **kwargs : dict
         Additional keyword arguments to pass to the function.
 
@@ -553,6 +604,30 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
     -------
     pystac.Item
         The modified item with the output raster file(s) added as assets.
+    
+    Notes
+    -----
+
+    Example of `writer_args` to encode the two outputs of `fun` in int16 and uint16 respectivelly:
+
+    writer_args=[
+        dict(
+            encoding=dict(
+                dtype="int16", 
+                scale_factor=0.001,
+                add_offset=0.0,
+                _FillValue= 2**15 - 1,
+            )
+        ),
+        dict(
+            encoding=dict(
+                dtype="uint16", 
+                scale_factor= 0.001,
+                add_offset= -0.01,
+                _FillValue= 2**15 - 1,
+            )
+        ),
+    ]
     """    
 
 # could be a method added to item or collection
