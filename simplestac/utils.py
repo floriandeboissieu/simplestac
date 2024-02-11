@@ -469,6 +469,8 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
                  output_dir: str, bbox=None, update=True,
                  xy_coords='center', 
                  remove_item_props=DEFAULT_REMOVE_PROPS,
+                 overwrite=False,
+                 progress=True,
                  **kwargs):
     """
     Writes item(s) assets to the specified output directory.
@@ -486,33 +488,39 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
         The bounding box to clip the assets to.
     remove_item_props : list of str
         List of regex patterns to remove from item properties.
+        If None, no properties are removed.
+    overwrite : bool, optional
+        Whether to overwrite existing files. Defaults to False.
     **kwargs
         Additional keyword arguments passed to write_raster.
 
     """    
     if isinstance(x, pystac.Item):
         x = [x]
-    x = ItemCollection(x, clone_items=True)
 
     output_dir = Path(output_dir).expand()
     items = []
-    for item in x:
-        ic = ItemCollection([item], clone_items=False)
+    for item in tqdm(x, disable=not progress):
+        ic = ItemCollection([item], clone_items=True)
         arr = ic.to_xarray(bbox=bbox, xy_coords=xy_coords).squeeze("time")
         item_dir = (output_dir / item.id).mkdir_p()
         for b in arr.band.values:
             filename = '_'.join([item.id, b+'.tif'])
             file = item_dir / f"{filename}"
             try:
-                write_raster(arr.sel(band=b), file, **kwargs)
-                if file.exists():
-                    stac_info = stac_asset_info_from_raster(file)
-                    if update:
-                        asset_info = item.assets[b].to_dict()
-                        asset_info.update(stac_info)
-                        stac_info = asset_info
-                    asset = pystac.Asset.from_dict(stac_info)
-                    item.add_asset(key=b, asset=asset)
+                if file.exists() and not overwrite:
+                    logger.debug(f"File already exists, skipping asset: {file}")
+                else:
+                    write_raster(arr.sel(band=b), file, **kwargs)
+                
+                # update stac asset info            
+                stac_info = stac_asset_info_from_raster(file)
+                if update:
+                    asset_info = item.assets[b].to_dict()
+                    asset_info.update(stac_info)
+                    stac_info = asset_info
+                asset = pystac.Asset.from_dict(stac_info)
+                item.add_asset(key=b, asset=asset)
             except RuntimeError as e:
                 logger.debug(e)
                 logger.debug(f'Skipping asset "{b}" for "{item.id}".')
