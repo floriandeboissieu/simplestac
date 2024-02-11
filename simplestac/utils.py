@@ -564,6 +564,9 @@ def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROP
     x.geometry = json.loads(to_geojson(geom3))
     x.properties.update(asset_props)
 
+    # remove links
+    x.links = []
+
     if remove_item_props is not None:
         pop_props = []
         for k in x.properties:
