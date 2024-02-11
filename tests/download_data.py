@@ -43,6 +43,12 @@ if not (s2_dir.exists() and roi_file.exists()):
         s2_tmp_dir.move(data_dir).rename(s2_dir)
         for scene in s2_dir.dirs()[n_scenes:]:
             scene.rmtree()
+        
         roi = gpd.read_file(roi_tmp_file)
         roi.to_file(roi_file)
-        roi[2:3].centroid.buffer(100, cap_style=3).to_file(roi_small_file)
+
+# produce roi_small
+if not roi_small_file.exists():
+    roi = gpd.read_file(roi_file)
+    roi[2:3].centroid.buffer(100, cap_style=3).to_file(roi_small_file)
+
