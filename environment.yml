@@ -3,11 +3,11 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python
   # required
-  - jsonschema
   - ipykernel
+  - jsonschema
   - path
+  - python
   - rioxarray
   - rio-cogeo
   - stackstac
