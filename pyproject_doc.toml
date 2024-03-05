@@ -32,6 +32,13 @@ template_dir = "docs/templates/pdocs"
     # in order to give back color (not grey) to pycon Generic.Output
     extra_javascript = ['docs/css/code_select.js']
     copyright = 'Copyright &copy; 2023 - 2024 Florian de Boissieu'
+    # plugins=['mkdocs-jupyter', 'search']
+
+# [[tool.portray.mkdocs.plugins]]
+# [tool.portray.mkdocs.plugins.mkdocs-jupyter] # not working, and changes the style
+#     include=["docs/examples/*.py"]
+# [[tool.portray.mkdocs.plugins]]
+# [tool.portray.mkdocs.plugins.search]
 
 [tool.portray.mkdocs.theme]
 name = "material"
@@ -46,17 +53,10 @@ features=["navigation.top"]
     icon = "material/theme-light-dark"
     name = "Switch to light mode"
 
-  [[tool.portray.mkdocs.theme.palette]]
-  scheme = "default"
-  primary = "teal"
-  accent = "blue"
-
-    [tool.portray.mkdocs.theme.palette.toggle]
-    icon = "material/theme-light-dark"
-    name = "Switch to dark mode"
 
 # favicon = "docs/icon/....png"
 # logo = "docs/icon/....png"
 
 [tool.portray.mkdocs.theme.icon]
 repo='fontawesome/brands/gitlab'
+

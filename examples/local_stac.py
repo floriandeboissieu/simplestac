@@ -1,7 +1,10 @@
-"""This notebook aims at showing how to build a STAC ItemCollection from local data"""
+# %% [md]
+# # Local STAC
+# This notebook shows how to build a STAC ItemCollection from local data.
 
+# %% [md]
+# Load required libraries and define paths.
 # %%
-# load required libraries and define paths
 import geopandas as gpd
 import numpy as np
 from pandas import to_datetime
@@ -20,15 +23,17 @@ res_dir = data_dir / "local_stac"
 if not (image_dir.exists() and roi_file.exists()):
     raise ValueError("Data not found")
 
-# The notebook results will be stored in the following directory
+# The notebook results will be stored in the
+# following directory:
 print(res_dir.mkdir_p())
 
-# make a temporary directory where the catalog will be written
+# Define the path where the catalog will be written.
 coll_path = res_dir / "collection.json"
 
+# %% [md]
+# Build a static collection with local files
+# and save it in a json file:
 # %%
-# build a static collection with local files
-# and save it in a json file
 if not coll_path.exists():
     coll = build_item_collection(image_dir, collection_format("S2_L2A_THEIA"))
     coll.save_object(coll_path)
@@ -38,9 +43,10 @@ if not coll_path.exists():
 
 coll = ItemCollection.from_file(coll_path)
 coll
-# %%
-# Now let's browse the different methods added to ItemCollection
+# %% [md]
+# Now let's browse the different methods added to ItemCollection.
 # ## Convert to a geodataframe
+# %%
 coll.to_geodataframe()
 # It can also include items in an additional `item` column
 coll.to_geodataframe(include_items=True)
@@ -48,15 +54,16 @@ coll.to_geodataframe(include_items=True)
 # In order to have it in the items CRS (only if unique):
 coll.to_geodataframe(wgs84=False).plot()
 
-# %%
+# %%[md]
 # ## Sort items
-# By date and tilename for example
-coll.sort_items(by=["datetime", "s2:mgrs_tile"], inplace=True)
+# By date and tilename for example.
 # This is particularly useful when applying a rolling window function on the data, see below.
+coll.sort_items(by=["datetime", "s2:mgrs_tile"], inplace=True)
 
-# %%
+# %% [md]
 # ## Filter items
-# subset collection by time, bounding box or any other property, e.g. S2 MGRS tile name
+# Subset collection by time, bounding box or any other property, e.g. S2 MGRS tile name
+# %%
 start = to_datetime("2016-01-01", utc=True)
 end = to_datetime("2017-01-01", utc=True)
 subcoll = coll.filter(datetime="2016-01-01/2017-01-01",
@@ -65,34 +72,39 @@ assert set([item.datetime.timestamp() for item in subcoll])== \
     set([item.datetime.timestamp() for item in coll if \
          item.datetime>=start and item.datetime<=end])
 subcoll
-
+# %% [md]
 # This operation could also be done after converting to xarray, see below.
 
-# %%
+# %% [md]
 # ## Convert to xarray
 # There are several ways to convert the collection to xarray.
 # The simplest is to use method to_xarray() which returns a lazy Dask xarray.
 # It is based on stackstac and provides a lot of options such as
 # resolution, subset of assets, interpolion method, etc.
 # See documentation for more details.
+# %%
 coll.to_xarray()
 coll.to_xarray(resolution=60, assets=['B08', 'B8A'])
-
+# %% [md]
 # Here is are a few examples of converting collection to xarray while subsetting
 # specific assets and a specific time period.
+# %%
 subxr = coll.filter(datetime="2016-01-01/2017-01-01", assets=['B08', 'B8A']).to_xarray()
 subxr1 = coll.to_xarray(assets=['B08', 'B8A']).sel(time=slice('2016-01-01', '2017-01-01'))
 subxr2 = coll.to_xarray().sel(band=['B08', 'B8A'], time=slice('2016-01-01', '2017-01-01'))
 assert subxr.equals(subxr1)
 assert subxr.equals(subxr2)
 
-# filtering can also be done on the assets attributes
+# %% [md]
+# Filtering can also be done on the assets attributes.
+# %%
 subxr.sel(band = subxr.common_name=="red")
 
-
+# %% [md]
 # The ItemCollection can also be converted to xarray with xpystac plugin to xarray.
 # In this last case band dimension was converted to variables, 
-# which could also be done with subxr.to_dataset(dim="band", promote_attrs=True)
+# which could also be done with `subxr.to_dataset(dim="band", promote_attrs=True)`.
+# %%
 subxr3 = xr.open_dataset(
     coll.filter(datetime="2016-01-01/2017-01-01", assets=['B08', 'B8A']),
     # don't forget to have xy_coords="center", 
@@ -102,22 +114,24 @@ subxr3 = xr.open_dataset(
 subxr3 = subxr3.to_array("band").transpose("time", "band", "y", "x")
 assert subxr.equals(subxr3)
 
+# %% [md]
+# Plot the first days.
+# _Notice the interpolation (nearest) on the fly of B8A from 20m to 10m compared to B08 (10m)_
 # %%
-# plot the first days
-# notice the interpolation (nearest) on the fly of B8A from 20m to 10m compared to B08 (10m)
 subxr[:2, :, :, :].plot(row='time', col='band') # 2 dates, 3 bands
 
+# %% [md]
+# Resolution can be changed on the fly
+# when converting collection to xarray,
+# see stackstac.stack for other option.
 # %%
-# resolution can be changed on the fly
-# when converting collection to xarray
-# see stackstac.stack for other option
 subxr4 = coll.filter(datetime="2016-01/2016-05").to_xarray(assets=['B08', 'B8A'], resolution=60)
 subxr4.plot(row='time', col='band')
 
 
+# %% [md]
+# Extract a small zone.
 # %%
-# move up to 
-# extract a small zone
 subcoll_gdf = subcoll.to_geodataframe(wgs84=False)
 extract_zone = subcoll_gdf.buffer(-1000).total_bounds
 smallxr = subxr.rio.clip_box(*extract_zone)
@@ -134,7 +148,7 @@ subcoll.to_xarray(
     geometry=roi.geometry, 
     assets=['B08', 'B8A']).isel(time=range(2)).plot(row='time', col='band')
 
-# %%
+# %% [md]
 # ## Apply items
 # The method `apply_items` applies to each item
 # a function that returns one or more xarray.DataArray,
@@ -145,6 +159,7 @@ subcoll.to_xarray(
 # with a scale factor of 0.001, an offset of 0.0,
 # and a nodata value of 2**15 - 1.
 # For the NDVI for example:
+# %%
 coll.apply_items(
     fun=apply_formula, # a function that returns one or more xarray.DataArray
     name="NDVI",
@@ -167,9 +182,10 @@ coll.filter(with_assets="NDVI").to_xarray().sel(band="NDVI").isel(time=range(4))
 # %%
 coll.filter(with_assets="NDVI").to_xarray().sel(band="NDVI").isel(x=150, y=150).plot.line(x="time")
 
-# %%
+# %% [md]
 # The method `apply_rolling` applies to a function to a group of items in
 # a rolling window.
+# %%
 def masked_mean(x, band):
     if band not in x.band:
         return
@@ -191,4 +207,5 @@ coll.apply_rolling(
 mask = coll.to_xarray().sel(band="CLM")>0
 coll.filter(with_assets="mNDVI").to_xarray().where(~mask).sel(band=["mNDVI", "NDVI"]).isel(x=150, y=150).plot.line(x="time")
 
+# %% [md]
 # Et voilà!

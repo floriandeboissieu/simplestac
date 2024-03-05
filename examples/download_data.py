@@ -1,5 +1,7 @@
-"""This script aims at downloading the data necessary for the example"""
-# %%
+# %% [md]
+# # Download data
+# This script aims at downloading the data necessary for the example.
+# 
 # The notebooks data are:
 # - a time series of Sentinel 2 data clip
 # over a small region of interest (172MB)
@@ -12,6 +14,7 @@
 # - data / s2_scenes
 # - data / roi.geojson
 
+# %%
 import geopandas as gpd
 from path import Path
 from tempfile import TemporaryDirectory
