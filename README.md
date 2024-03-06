@@ -36,12 +36,18 @@ Install the package in a virtual environment. See
 [venv](https://docs.python.org/3/library/venv.html) for virtualenv.
 
 ## Install
-Within a conda env:
+Create a conda env:
 ```shell
 mamba env create -n simplestac --file https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/raw/main/environment.yml
 ```
 
 Within a virtualenv:
+```shell
+pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac
+```
+
+## Update
+Update `simplestac` within an env (conda or virtualenv):
 ```shell
 pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac
 ```
