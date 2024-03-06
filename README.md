@@ -1,6 +1,6 @@
 # SimpleSTAC : STAC tools to simplify STAC use.
 
-__[Documentation](https://simplestac-umr-tetis-stac-e5919c76d0463bc6d6669060b20af6f73f2a8.pages.mia.inra.fr)__
+__[Documentation](https://umr-tetis.pages.mia.inra.fr/stac/simplestac)__
 
 [![licence](https://img.shields.io/badge/Licence-GPL--3-blue.svg)](https://www.r-project.org/Licenses/GPL-3)
 [![python](https://img.shields.io/badge/Python-3-blue.svg)](https://www.python.org)
