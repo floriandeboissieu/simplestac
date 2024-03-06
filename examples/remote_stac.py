@@ -1,5 +1,7 @@
 # %% [md]
 # # Remote STAC
+# [Source code](https://forgemia.inra.fr/umr-tetis/stac/simplestac/examples/remote_stac.py)
+#
 # This notebook shows how to mix remote and local data in a STAC ItemCollection.
 # Two use case are shown, with Sentinel-2 L2A catalog Microsoft Planetary Computer
 # and of Element84.

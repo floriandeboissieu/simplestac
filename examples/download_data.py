@@ -1,5 +1,7 @@
 # %% [md]
 # # Download data
+# [Source code](https://forgemia.inra.fr/umr-tetis/stac/simplestac/examples/download_data.py)
+#
 # This script aims at downloading the data necessary for the example.
 # 
 # The notebooks data are:
