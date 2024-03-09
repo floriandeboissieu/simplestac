@@ -19,7 +19,7 @@ pages:
   stage: pages
   script:
     - micromamba install -c conda-forge -y conda-merge
-    - conda-merge environment.yml environment-doc.yml > /tmp/environment-merge.yml
+    - conda-merge environment.yml environment-doc.yml environment-notebook.yml > /tmp/environment-merge.yml
     - micromamba create -n simplestac -f /tmp/environment-merge.yml
     - eval "$(micromamba shell hook --shell bash)"
     - micromamba activate simplestac
