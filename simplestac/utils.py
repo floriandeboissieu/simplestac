@@ -18,6 +18,7 @@ import rioxarray # necessary to activate rio plugin in xarray
 from tqdm import tqdm
 from typing import Union
 import warnings
+import datetime
 
 from simplestac.local import stac_asset_info_from_raster, properties_from_assets
 
@@ -26,7 +27,8 @@ logger = logging.getLogger(__name__)
 
 #### Generic functions and classes ####
 
-
+S2_THEIA_BANDS = [f"B{i+1}" for i in range(12)]+["B8A"]
+S2_SEN2COR_BANDS = [f"B{i+1:02}" for i in range(12)]+["B8A"]
 
 class ExtendPystacClasses:
     """Add capacities to_xarray and filter to pystac Catalog, Collection, ItemCollection"""
@@ -607,7 +609,45 @@ def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROP
         for k in pop_props:
             x.properties.pop(k)
 
+
+def harmonize_sen2cor_offet(collection, bands=S2_SEN2COR_BANDS, inplace=False):
+    """
+    Harmonize new Sentinel-2 item collection (Sen2Cor v4+, 2022-01-25)
+    to the old baseline (v3-):
+    adds an offset of -1000 to all band assets of items
+    with datetime >= 2022-01-25
+
+    Parameters
+    ----------
+    data: ItemCollection
+        An item collection of S2 scenes
+    bands: list
+        A list of bands to harmonize
+
+    Returns
+    -------
+    ItemCollection
+        A collection of S2 scenes with extra_fields["raster:bands"]
+        added/updated to each band asset with datetime >= 2022-01-25.
     
+    Notes
+    -----
+    References:
+    - https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a#Baseline-Change
+    - https://github.com/microsoft/PlanetaryComputer/issues/134
+    """
+    
+    if not inplace:
+        collection = collection.copy()
+    for item in collection:
+        for asset in bands:
+            if asset in item.assets:
+                if item.properties["datetime"] >= "2022-01-25":
+                    item.assets[asset].extra_fields["raster:bands"] = [dict(offset=-1000)]
+                else:
+                    item.assets[asset].extra_fields["raster:bands"] = [dict(offset=0)]
+    if inplace:
+        return collection
 
 
 def apply_item(x, fun, name, output_dir, overwrite=False,
