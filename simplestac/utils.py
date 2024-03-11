@@ -19,6 +19,7 @@ from tqdm import tqdm
 from typing import Union
 import warnings
 import datetime
+import geopandas as gpd
 
 from simplestac.local import stac_asset_info_from_raster, properties_from_assets
 
@@ -492,6 +493,77 @@ class ExtendPystacClasses:
         if not inplace:
             return x
 
+    def extract_points(self, points, method="nearest", tolerance="pixel", drop=False, **kwargs):
+        """Extract points from xarray
+
+        Parameters
+        ----------
+        x : xarray.DataArray or xarray.Dataset
+        points : geopandas.GeoDataFrame or pandas.DataFrame
+            Points or coordinates of the points
+        method, tolerance, drop : see xarray.DataArray.sel
+            Additional keyword arguments passed to xarray.DataArray.sel
+
+        Returns
+        -------
+        xarray.DataArray or xarray.Dataset
+            The points values with points index as coordinate.
+            The returned xarray can then be converted to
+            dataframe with `to_dataframe` or `to_dask_dataframe`.
+
+        Examples
+        --------
+        >>> import xarray as xr
+        >>> import pandas as pd
+        >>> import dask.array
+        >>> import numpy as np
+        >>> da = xr.DataArray(
+        ... # np.random.random((100,200)),
+        ... dask.array.random.random((100,200,10), chunks=10),
+        ... coords = [('x', np.arange(100)+.5), 
+        ...           ('y', np.arange(200)+.5),
+        ...           ('z', np.arange(10)+.5)]
+        ... ).rename("pixel_value")
+        >>> df = pd.DataFrame(
+        ...    dict(
+        ...        x=np.random.permutation(range(100))[:100]+np.random.random(100),
+        ...        y=np.random.permutation(range(100))[:100]+np.random.random(100),
+        ...        other=range(100),
+        ...    )
+        ... )
+        >>> df.index.rename("id_point", inplace=True)
+        >>> extraction = extract_points(da, df, method="nearest", tolerance=.5)
+        >>> ext_df = extraction.to_dataframe()
+        >>> ext_df.reset_index(drop=False, inplace=True)
+        >>> ext_df.rename({k: k+"_pixel" for k in da.dims}, axis=1, inplace=True)
+        >>> # join extraction to original dataframe
+        >>> df.merge(ext_df, on=["id_point"])
+        """ 
+        """_summary_
+
+        Parameters
+        ----------
+        points : _type_
+            _description_
+        tolerance : float or str, optional
+
+        method, tolerance, drop : see xarray.DataArray.sel
+            Additional keyword arguments passed to xarray.DataArray.sel
+            If tolerance is "pixel", it is set to half the resolution of the xarray.
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        # avoid starting anything if not all points
+        if isinstance(points, (gpd.GeoDataFrame, gpd.GeoSeries)):
+            if not points.geom_type.isin(['Point', 'MultiPoint']).all():
+                raise ValueError("All geometries must be of type Point or MultiPoint")
+        
+        arr = self.to_xarray(**kwargs)#geometry=points)
+        if tolerance == "pixel":
+            tolerance = arr.rio.resolution()[0] / 2
+        return extract_points(arr, points, method=method, tolerance=tolerance, drop=drop)
 
 class ItemCollection(pystac.ItemCollection, ExtendPystacClasses):
     pass
@@ -884,20 +956,23 @@ def harmonize_sen2cor_offet(x, bands=S2_SEN2COR_BANDS, inplace=False):
     if inplace:
         return x
 
-def extract_points(x, df, **kwargs):
-    """_summary_
+def extract_points(x, points, method=None, tolerance=None, drop=False):
+    """Extract points from xarray
 
     Parameters
     ----------
     x : xarray.DataArray or xarray.Dataset
-    df : pandas.DataFrame
-        Coordinates of the points
+    points : geopandas.GeoDataFrame or pandas.DataFrame
+        Points or coordinates of the points
+    method, tolerance, drop : see xarray.DataArray.sel
+        Additional keyword arguments passed to xarray.DataArray.sel
 
     Returns
     -------
     xarray.DataArray or xarray.Dataset
-        The points values, tha can be converted to
-        dataframe with `to_dataframe` `to_dask_dataframe`
+        The points values with points index as coordinate.
+        The returned xarray can then be converted to
+        dataframe with `to_dataframe` or `to_dask_dataframe`.
 
     Examples
     --------
@@ -929,9 +1004,20 @@ def extract_points(x, df, **kwargs):
 
     """
     # x = da
+    valid_types = (gpd.GeoDataFrame, gpd.GeoSeries)
+    if isinstance(points, valid_types):
+        if not points.geom_type.isin(['Point', 'MultiPoint']).all():
+            raise ValueError("All geometries must be of type Point")
+
+    if isinstance(points, valid_types):
+        if hasattr(points, 'crs') and not points.crs.equals(x.rio.crs):
+            logger.debug(f"Reprojecting points from {points.crs} to {x.rio.crs}")
+            points = points.to_crs(x.rio.crs)
+        points = points.get_coordinates()
+
     xk = x.dims
-    coords_cols = [c for c in df.keys() if c in xk]
-    coords = df[coords_cols]
-    points = x.sel(coords.to_xarray(), **kwargs)
+    coords_cols = [c for c in points.keys() if c in xk]
+    coords = points[coords_cols]
+    points = x.sel(coords.to_xarray(), method=method, tolerance=tolerance, drop=drop)
     return points
 #######################################
