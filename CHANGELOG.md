@@ -1,0 +1,18 @@
+# v1.1.0
+
+## Add
+
+- function `write_assets`: write item assets (rasters only at the moment) of an ItemCollection locally and return the corresponding ItemCollection.
+- function `harmonize_sen2cor_offset`: adds an `offset` property to the assets so it is taken into account by `to_xarray`.
+- method `ItemCollection.drop_duplicates`: drop duplicated ID returned by pgstac.
+- method `ItemCollection.drop_non_raster`: drop non raster assets.
+- `writer_args` to `ItemCollection.apply_...` methods and function in order to specify the outputs format, e.g. the encoding.
+- in local.py, `start_datetime` and `end_datetime` can now be used instead of `datetime` in the template used to build a local ItemCollection.
+- module `extents.py` to manipulate STAC extents.
+- tests for CI
+
+## Fix
+
+- `apply_formula` with "in" operator in apply_formula.
+- COG type of local STAC assets (instead of GTiff)
+- imports in `simplestac.utils`

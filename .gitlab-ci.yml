@@ -16,6 +16,9 @@ tests:
     - micromamba env list
     - pip install -e .
     - pytest -s
+  only:
+   - merge-request
+   - schedules
   
 pages:
   stage: pages
