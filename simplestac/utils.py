@@ -609,51 +609,6 @@ def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROP
         for k in pop_props:
             x.properties.pop(k)
 
-
-def harmonize_sen2cor_offet(x, bands=S2_SEN2COR_BANDS, inplace=False):
-    """
-    Harmonize new Sentinel-2 item collection (Sen2Cor v4+, 2022-01-25)
-    to the old baseline (v3-):
-    adds an offset of -1000 to the asset extra field "raster:bands" of the items
-    with datetime >= 2022-01-25
-
-    Parameters
-    ----------
-    x: ItemCollection
-        An item collection of S2 scenes
-    bands: list
-        A list of bands to harmonize
-    
-    inplace: bool
-        Whether to modify the collection in place. Defaults to False.
-        In that case, a cloned collection is returned.
-
-    Returns
-    -------
-    ItemCollection
-        A collection of S2 scenes with extra_fields["raster:bands"]
-        added/updated to each band asset with datetime >= 2022-01-25.
-    
-    Notes
-    -----
-    References:
-    - https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a#Baseline-Change
-    - https://github.com/microsoft/PlanetaryComputer/issues/134
-    """
-    
-    if not inplace:
-        collection = collection.copy()
-    for item in collection:
-        for asset in bands:
-            if asset in item.assets:
-                if item.properties["datetime"] >= "2022-01-25":
-                    item.assets[asset].extra_fields["raster:bands"] = [dict(offset=-1000)]
-                else:
-                    item.assets[asset].extra_fields["raster:bands"] = [dict(offset=0)]
-    if inplace:
-        return collection
-
-
 def apply_item(x, fun, name, output_dir, overwrite=False,
                copy=True, bbox=None, geometry=None, writer_args=None, **kwargs):
     """
@@ -879,5 +834,48 @@ def apply_formula(x, formula):
     formula = re.sub(r"\s*in\s*(\[.*\])", ".isin(\\1)", formula)
 
     return eval(formula)
+
+def harmonize_sen2cor_offet(x, bands=S2_SEN2COR_BANDS, inplace=False):
+    """
+    Harmonize new Sentinel-2 item collection (Sen2Cor v4+, 2022-01-25)
+    to the old baseline (v3-):
+    adds an offset of -1000 to the asset extra field "raster:bands" of the items
+    with datetime >= 2022-01-25
+
+    Parameters
+    ----------
+    x: ItemCollection
+        An item collection of S2 scenes
+    bands: list
+        A list of bands to harmonize
+    
+    inplace: bool
+        Whether to modify the collection in place. Defaults to False.
+        In that case, a cloned collection is returned.
+
+    Returns
+    -------
+    ItemCollection
+        A collection of S2 scenes with extra_fields["raster:bands"]
+        added/updated to each band asset with datetime >= 2022-01-25.
+    
+    Notes
+    -----
+    References:
+    - https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a#Baseline-Change
+    - https://github.com/microsoft/PlanetaryComputer/issues/134
+    """
+    
+    if not inplace:
+        x = x.copy()
+    for item in x:
+        for asset in bands:
+            if asset in item.assets:
+                if item.properties["datetime"] >= "2022-01-25":
+                    item.assets[asset].extra_fields["raster:bands"] = [dict(offset=-1000)]
+                else:
+                    item.assets[asset].extra_fields["raster:bands"] = [dict(offset=0)]
+    if inplace:
+        return x
 
 #######################################
