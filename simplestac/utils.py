@@ -503,7 +503,11 @@ class ExtendPystacClasses:
             Points or coordinates of the points
         method, tolerance, drop : see xarray.DataArray.sel
             Additional keyword arguments passed to xarray.DataArray.sel
-
+            If tolerance is "pixel", it is set to half the resolution
+            of the xarray, supposing it is a rioxarray.
+        **kwargs:
+            Additional keyword arguments passed to `ItemCollection.to_xarray()`
+            
         Returns
         -------
         xarray.DataArray or xarray.Dataset
@@ -539,22 +543,7 @@ class ExtendPystacClasses:
         >>> # join extraction to original dataframe
         >>> df.merge(ext_df, on=["id_point"])
         """ 
-        """_summary_
 
-        Parameters
-        ----------
-        points : _type_
-            _description_
-        tolerance : float or str, optional
-
-        method, tolerance, drop : see xarray.DataArray.sel
-            Additional keyword arguments passed to xarray.DataArray.sel
-            If tolerance is "pixel", it is set to half the resolution of the xarray.
-        Returns
-        -------
-        _type_
-            _description_
-        """
         # avoid starting anything if not all points
         if isinstance(points, (gpd.GeoDataFrame, gpd.GeoSeries)):
             if not points.geom_type.isin(['Point', 'MultiPoint']).all():
