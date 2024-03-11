@@ -16,9 +16,9 @@ tests:
     - micromamba env list
     - pip install -e .
     - pytest -s
-  only:
-   - merge-request
-   - schedules
+  rules:
+   - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+   - if: $CI_COMMIT_BRANCH =~ /.*/
   
 pages:
   stage: pages
