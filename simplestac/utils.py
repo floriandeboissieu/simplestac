@@ -610,19 +610,23 @@ def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROP
             x.properties.pop(k)
 
 
-def harmonize_sen2cor_offet(collection, bands=S2_SEN2COR_BANDS, inplace=False):
+def harmonize_sen2cor_offet(x, bands=S2_SEN2COR_BANDS, inplace=False):
     """
     Harmonize new Sentinel-2 item collection (Sen2Cor v4+, 2022-01-25)
     to the old baseline (v3-):
-    adds an offset of -1000 to all band assets of items
+    adds an offset of -1000 to the asset extra field "raster:bands" of the items
     with datetime >= 2022-01-25
 
     Parameters
     ----------
-    data: ItemCollection
+    x: ItemCollection
         An item collection of S2 scenes
     bands: list
         A list of bands to harmonize
+    
+    inplace: bool
+        Whether to modify the collection in place. Defaults to False.
+        In that case, a cloned collection is returned.
 
     Returns
     -------
