@@ -878,4 +878,54 @@ def harmonize_sen2cor_offet(x, bands=S2_SEN2COR_BANDS, inplace=False):
     if inplace:
         return x
 
+def extract_points(x, df, **kwargs):
+    """_summary_
+
+    Parameters
+    ----------
+    x : xarray.DataArray or xarray.Dataset
+    df : pandas.DataFrame
+        Coordinates of the points
+
+    Returns
+    -------
+    xarray.DataArray or xarray.Dataset
+        The points values, tha can be converted to
+        dataframe with `to_dataframe` `to_dask_dataframe`
+
+    Examples
+    --------
+    >>> import xarray as xr
+    >>> import pandas as pd
+    >>> import dask.array
+    >>> import numpy as np
+    >>> da = xr.DataArray(
+    ... # np.random.random((100,200)),
+    ... dask.array.random.random((100,200,10), chunks=10),
+    ... coords = [('x', np.arange(100)+.5), 
+    ...           ('y', np.arange(200)+.5),
+    ...           ('z', np.arange(10)+.5)]
+    ... ).rename("pixel_value")
+    >>> df = pd.DataFrame(
+    ...    dict(
+    ...        x=np.random.permutation(range(100))[:100]+np.random.random(100),
+    ...        y=np.random.permutation(range(100))[:100]+np.random.random(100),
+    ...        other=range(100),
+    ...    )
+    ... )
+    >>> df.index.rename("id_point", inplace=True)
+    >>> extraction = extract_points(da, df, method="nearest", tolerance=.5)
+    >>> ext_df = extraction.to_dataframe()
+    >>> ext_df.reset_index(drop=False, inplace=True)
+    >>> ext_df.rename({k: k+"_pixel" for k in da.dims}, axis=1, inplace=True)
+    >>> # join extraction to original dataframe
+    >>> df.merge(ext_df, on=["id_point"])
+
+    """
+    # x = da
+    xk = x.dims
+    coords_cols = [c for c in df.keys() if c in xk]
+    coords = df[coords_cols]
+    points = x.sel(coords.to_xarray(), **kwargs)
+    return points
 #######################################
