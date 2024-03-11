@@ -101,7 +101,7 @@ class ExtendPystacClasses:
         if bbox is not None:
             arr = arr.rio.clip_box(*bbox)
         if geometry is not None:
-            if hasattr(geometry, 'crs') and geometry.crs != arr.rio.crs:
+            if hasattr(geometry, 'crs') and not geometry.crs.equals(arr.rio.crs):
                 logger.debug(f"Reprojecting geometry from {geometry.crs} to {arr.rio.crs}")
                 geometry = geometry.to_crs(arr.rio.crs)
             arr = arr.rio.clip(geometry)
