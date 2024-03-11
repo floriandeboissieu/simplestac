@@ -2,6 +2,9 @@ from simplestac.local import collection_format, build_item_collection
 from simplestac.utils import write_raster, apply_formula
 import xarray as xr
 import pystac
+from shapely.geometry import MultiPoint
+import geopandas as gpd
+
 
 def test_formatting():
     fmt = collection_format()
@@ -86,7 +89,7 @@ def test_apply_items_raster_args(s2scene_dir, roi):
                 dtype="int16", 
                 scale_factor=0.001,
                 add_offset=0.0,
-                _FillValue= 2**15 - 1,
+                _FillValue= -2**15,
             ),
         )
     )
@@ -95,9 +98,20 @@ def test_apply_items_raster_args(s2scene_dir, roi):
     assert rb["datatype"] == "int16"
     assert rb["scale"] == 0.001
     assert rb["offset"] == 0.0
-    assert rb["nodata"] == 2**15 - 1
+    assert rb["nodata"] == -2**15
 
-    
+def test_extract_points(s2scene_dir, roi):
+    col = build_item_collection(s2scene_dir, collection_format())
+    points = roi.geometry.apply(lambda x: MultiPoint(list(x.exterior.coords)))
+    points.index.rename("id_point", inplace=True)
+    ext = col.extract_points(points)
+    assert ext.id_point.isin(points.index.values).all()
+    coords = points.get_coordinates().reset_index(drop=True)
+    points = gpd.GeoSeries(gpd.points_from_xy(**coords, crs=roi.crs))
+    points.index.rename("id_point", inplace=True)
+    ext = col.extract_points(points)
+    assert ext.id_point.isin(points.index.values).all()
+
 ############################################################
     
 
