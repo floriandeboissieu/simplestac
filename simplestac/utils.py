@@ -571,6 +571,7 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
                  remove_item_props=DEFAULT_REMOVE_PROPS,
                  overwrite=False,
                  progress=True,
+                 writer_args=None,
                  **kwargs):
     """
     Writes item(s) assets to the specified output directory.
@@ -591,9 +592,16 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
         If None, no properties are removed.
     overwrite : bool, optional
         Whether to overwrite existing files. Defaults to False.
+    writer_args : dict, optional
+        Arguments to pass to write_raster for each asset. Defaults to `None`.
+        See Notes for an example.
     **kwargs
         Additional keyword arguments passed to write_raster.
 
+    Returns
+    -------
+    ItemCollection
+        The item collection with the metadata updated with local asset paths.
     """    
     if isinstance(x, pystac.Item):
         x = [x]
@@ -602,16 +610,23 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
     items = []
     for item in tqdm(x, disable=not progress):
         ic = ItemCollection([item], clone_items=True)
-        arr = ic.to_xarray(bbox=bbox, xy_coords=xy_coords).squeeze("time")
+        arr = ic.to_xarray(bbox=bbox, xy_coords=xy_coords, ).squeeze("time")
         item_dir = (output_dir / item.id).mkdir_p()
         for b in arr.band.values:
             filename = '_'.join([item.id, b+'.tif'])
             file = item_dir / f"{filename}"
+            
+            # Use specific writer args if available
+            if writer_args is not None and b in writer_args:
+                wa = writer_args[b]
+            else:
+                wa = kwargs
+            
             try:
                 if file.exists() and not overwrite:
                     logger.debug(f"File already exists, skipping asset: {file}")
                 else:
-                    write_raster(arr.sel(band=b), file, **kwargs)
+                    write_raster(arr.sel(band=b), file, **wa)
                 
                 # update stac asset info            
                 stac_info = stac_asset_info_from_raster(file)
@@ -934,7 +949,7 @@ def harmonize_sen2cor_offset(x, bands=S2_SEN2COR_BANDS, inplace=False):
     """
     
     if not inplace:
-        x = x.copy()
+        x = x.clone()
     for item in x:
         for asset in bands:
             if asset in item.assets:
