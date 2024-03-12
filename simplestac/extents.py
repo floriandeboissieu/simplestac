@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Union
 from stacflow.common_types import Bbox
-from rtree import index
 
 
 @dataclass
@@ -65,21 +64,13 @@ def clusterize_bboxes(bboxes: list[Bbox]) -> list[Bbox]:
 
     """
     bboxes = [SmartBbox(bbox) for bbox in bboxes]
-    idx = index.Index()
-    for i, bbox in enumerate(bboxes):
-        idx.insert(id=i, coordinates=bbox.coords)
     clusters = [bboxes.pop()]
 
-    def _update_clusters_idx():
-        _clusters_idx = index.Index()
-        for _i, cluster_bbox in enumerate(clusters):
-            _clusters_idx.insert(id=_i, coordinates=cluster_bbox.coords)
-        return _clusters_idx
-
-    clusters_idx = _update_clusters_idx()
     while bboxes:
         bbox = bboxes.pop()
-        inter_clusters = list(clusters_idx.intersection(bbox.coords))
+        inter_clusters = [
+            i for i, cluster in enumerate(clusters) if bbox.touches(cluster)
+        ]
         if inter_clusters:
             # We merge all intersecting clusters into one
             clusters[inter_clusters[0]].update(bbox)
@@ -92,8 +83,6 @@ def clusterize_bboxes(bboxes: list[Bbox]) -> list[Bbox]:
             ]
         else:
             clusters.append(bbox)
-
-        clusters_idx = _update_clusters_idx()
 
     return [cluster.coords for cluster in clusters]
 

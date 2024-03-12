@@ -26,7 +26,6 @@ dependencies = [
   "rioxarray",
   "stac_static@git+https://github.com/jsignell/stac-static",
   "stackstac",
-  "rtree",
 ]
 
 [project.optional-dependencies]
