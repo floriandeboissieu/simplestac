@@ -32,7 +32,30 @@ import pystac
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Union
-from stacflow.common_types import Bbox
+from numbers import Number
+from annotated_types import Predicate
+from typing_extensions import Annotated
+
+
+def is_bbox(l: List) -> bool:
+    """
+    Predicate to test is the input list represents a bounding box in WGS84.
+
+    Args:
+        l: a list of `Number`
+
+    Returns:
+
+    """
+    if len(l) == 4:
+        if all(isinstance(i, Number) for i in l):
+            if -180 <= l[0] and -90 <= l[1] and l[2] <= 180 and l[3] <= 90:
+                if l[0] <= l[2] and l[1] <= l[3]:
+                    return True
+    return False
+
+
+Bbox = Annotated[list, Predicate(is_bbox)]
 
 
 @dataclass
