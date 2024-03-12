@@ -902,7 +902,7 @@ def apply_formula(x, formula):
 
     return eval(formula)
 
-def harmonize_sen2cor_offet(x, bands=S2_SEN2COR_BANDS, inplace=False):
+def harmonize_sen2cor_offset(x, bands=S2_SEN2COR_BANDS, inplace=False):
     """
     Harmonize new Sentinel-2 item collection (Sen2Cor v4+, 2022-01-25)
     to the old baseline (v3-):
