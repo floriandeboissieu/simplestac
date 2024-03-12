@@ -1,4 +1,4 @@
-from simplestac.utils import write_assets, ItemCollection, harmonize_sen2cor_offet
+from simplestac.utils import write_assets, ItemCollection, harmonize_sen2cor_offset
 import planetary_computer as pc
 import pystac_client
 
@@ -29,7 +29,7 @@ def test_offset_harmonization(roi, s2scene_pc_dir):
         sortby="datetime",
     )
     col = search.item_collection()
-    harmonize_sen2cor_offet(col, inplace=True)
+    harmonize_sen2cor_offset(col, inplace=True)
     of0 = col[0].assets["B02"].extra_fields["raster:bands"][0]["offset"]
     ofN = col[-1].assets["B02"].extra_fields["raster:bands"][0]["offset"]
 
