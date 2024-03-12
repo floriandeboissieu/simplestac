@@ -1,5 +1,15 @@
 """
 Deal with STAC Extents.
+
+The `AutoSpatialExtent` is an extension of the `pystac.SpatialExtent`,
+it allows to automatically compute clusters of bboxes from a list of bboxes.
+It can be instanciated with the same arguments as `pystac.SpatialExtent`.
+Bounding boxes lists will be automatically processed: all touching bboxes
+will be merged and updated.
+
+The `AutoTemporalExtent` is an extension of the `pystac.TemporalExtent`.
+It simply computes the date min and date max of a set of dates or dates ranges.
+
 """
 import pystac
 from dataclasses import dataclass
