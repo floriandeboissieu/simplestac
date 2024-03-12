@@ -1,14 +1,31 @@
 """
 Deal with STAC Extents.
 
-The `AutoSpatialExtent` is an extension of the `pystac.SpatialExtent`,
-it allows to automatically compute clusters of bboxes from a list of bboxes.
-It can be instanciated with the same arguments as `pystac.SpatialExtent`.
-Bounding boxes lists will be automatically processed: all touching bboxes
-will be merged and updated.
+# AutoSpatialExtent
+
+The vanilla `pystac.SpatialExtent` enables to describe a spatial extent 
+from several bounding boxes. While this is useful, sometimes we want to
+merge together bounding boxes that are partially overlapping. For instance,
+we can take the example of the France mainland, covered by multiple remote
+sensing products that are generally partially overlapping, and the Corse 
+island that is also covered by a number of RS products, but spatially 
+disjoint from the France mainland RS products bounding boxes. In this 
+particular exemple, we would like to regroup all RS products bounding 
+boxes so that there is one bbox for the France mainland, and another 
+bbox for the Corse island. This is particularly useful when a STAC 
+collection covers sparsely a broad area (e.g. worldwide), with several 
+isolated regions.
+
+The `AutoSpatialExtent` is an extension of the `pystac.SpatialExtent`.
+
+Instances are initialized with the same arguments as `pystac.SpatialExtent`.
+Internally, bounding boxes lists are processed at initialisation, so all 
+partially overlapping bounding boxes are merged and updated as a single one.
+
+# AutoTemporalExtent
 
 The `AutoTemporalExtent` is an extension of the `pystac.TemporalExtent`.
-It simply computes the date min and date max of a set of dates or dates ranges.
+It computes the date min and date max of a set of dates or dates ranges.
 
 """
 import pystac
