@@ -53,7 +53,14 @@ features=["navigation.top"]
     icon = "material/theme-light-dark"
     name = "Switch to light mode"
 
+  [[tool.portray.mkdocs.theme.palette]]
+  scheme = "default"
+  primary = "teal"
+  accent = "blue"
 
+    [tool.portray.mkdocs.theme.palette.toggle]  
+    icon = "material/theme-light-dark"
+    name = "Switch to dark mode"
 # favicon = "docs/icon/....png"
 # logo = "docs/icon/....png"
 
