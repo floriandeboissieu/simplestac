@@ -31,7 +31,7 @@ It computes the date min and date max of a set of dates or dates ranges.
 import pystac
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Union
+from typing import Union, List
 from numbers import Number
 from annotated_types import Predicate
 from typing_extensions import Annotated
