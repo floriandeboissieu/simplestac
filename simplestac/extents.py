@@ -209,12 +209,15 @@ class AutoTemporalExtent(pystac.TemporalExtent):
 
     def make_single_interval(self):
         all_dates = []
-        for interval in self.intervals:
-            if isinstance(interval, (list, tuple)):
-                all_dates += [i for i in interval if i is not None]
-            elif isinstance(interval, datetime):
-                all_dates.append(interval)
-            else:
-                TypeError(f"Unsupported date/range of: {interval}")
+        for dates_or_intervals in self.intervals:
+            # Because base class (`pystac.SpatialExtent`) converts everything 
+            # into [[...]]
+            for date_or_interval in dates_or_intervals:
+                if isinstance(date_or_interval, (list, tuple)):
+                    all_dates += [i for i in date_or_interval if i is not None]
+                elif isinstance(date_or_interval, datetime):
+                    all_dates.append(date_or_interval)
+                else:
+                    TypeError(f"Unsupported date/range of: {date_or_interval}")
         self.intervals = \
             [[min(all_dates), max(all_dates)]] if all_dates else [None, None]
