@@ -1,5 +1,5 @@
 import pytest
-from simplestac.extents import AutoSpatialExtent
+from simplestac.extents import AutoSpatialExtent, AutoTemporalExtent
 
 from datetime import datetime
 
