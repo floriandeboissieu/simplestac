@@ -4,7 +4,7 @@
 # portray as_html -c pyproject.toml
 
 [tool.portray]
-modules = ["simplestac.local", "simplestac.utils"]
+modules = ["simplestac.local", "simplestac.utils", "simplestac.extents"]
 # extra_markdown_extensions = ['mdx_breakless_lists']
 extra_markdown_extensions = ['pymdownx.superfences']
 
