@@ -27,6 +27,34 @@ logger = logging.getLogger(__name__)
 
 
 #### Generic functions and classes ####
+# Adds GDAL_HTTP_MAX_RETRY and GDAL_HTTP_RETRY_DELAY to
+# stackstac.rio_reader.DEFAULT_GDAL_ENV
+# https://github.com/microsoft/PlanetaryComputerExamples/issues/279
+# while waiting for a PR to be merged: https://github.com/gjoseph92/stackstac/pull/232
+# See also https://github.com/gjoseph92/stackstac/issues/18
+DEFAULT_GDAL_ENV = stackstac.rio_reader.LayeredEnv(
+    always=dict(
+        GDAL_HTTP_MULTIRANGE="YES",  # unclear if this actually works
+        GDAL_HTTP_MERGE_CONSECUTIVE_RANGES="YES",
+        # ^ unclear if this works either. won't do much when our dask chunks are aligned to the dataset's chunks.
+        GDAL_HTTP_MAX_RETRY="5",
+        GDAL_HTTP_RETRY_DELAY="1",
+    ),
+    open=dict(
+        GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
+        # ^ stop GDAL from requesting `.aux` and `.msk` files from the bucket (speeds up `open` time a lot)
+        VSI_CACHE=True
+        # ^ cache HTTP requests for opening datasets. This is critical for `ThreadLocalRioDataset`,
+        # which re-opens the same URL many times---having the request cached makes subsequent `open`s
+        # in different threads snappy.
+    ),
+    read=dict(
+        VSI_CACHE=False
+        # ^ *don't* cache HTTP requests for actual data. We don't expect to re-request data,
+        # so this would just blow out the HTTP cache that we rely on to make repeated `open`s fast
+        # (see above)
+    ),
+)
 
 S2_THEIA_BANDS = [f"B{i+1}" for i in range(12)]+["B8A"]
 S2_SEN2COR_BANDS = [f"B{i+1:02}" for i in range(12)]+["B8A"]
@@ -58,7 +86,7 @@ class ExtendPystacClasses:
         if not inplace:
             return x
 
-    def to_xarray(self, xy_coords="center", bbox=None, geometry=None, **kwargs):
+    def to_xarray(self, xy_coords="center", bbox=None, geometry=None, gdal_env=DEFAULT_GDAL_ENV, **kwargs):
         """Returns a DASK xarray()
         
         This is a proxy to stackstac.stac
@@ -92,7 +120,7 @@ class ExtendPystacClasses:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
             try:
-                arr = stackstac.stack(self, xy_coords=xy_coords, **kwargs)
+                arr = stackstac.stack(self, xy_coords=xy_coords, gdal_env=gdal_env, **kwargs)
             except ValueError as e:
                 if "Cannot automatically compute the resolution" in str(e):
                     raise ValueError(str(e)+"\nOr drop non-raster assets from collection with ItemCollection.drop_non_raster()")
