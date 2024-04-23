@@ -985,7 +985,7 @@ def harmonize_sen2cor_offset(x, bands=S2_SEN2COR_BANDS, inplace=False):
                     item.assets[asset].extra_fields["raster:bands"] = [dict(offset=-1000)]
                 else:
                     item.assets[asset].extra_fields["raster:bands"] = [dict(offset=0)]
-    if inplace:
+    if not inplace:
         return x
 
 def extract_points(x, points, method=None, tolerance=None, drop=False):
