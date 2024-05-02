@@ -365,6 +365,8 @@ class ExtendPystacClasses:
         inplace : bool, optional
             Whether to modify the collection in place. Defaults to False.
             In that case, a cloned collection is returned.
+        datetime : datetime, optional
+            A datetime to filter the items with. Defaults to None.
         bbox : tuple, optional
             A bounding box to clip_box the items with. Defaults to None.
         geometry : shapely.geometry, optional
@@ -614,7 +616,8 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
     output_dir : str
         The directory to write the assets to.
     bbox : Optional
-        The bounding box to clip the assets to.
+        Argument forwarded to ItemCollection.to_xarray.
+        The bounding box (in the CRS of the items) to clip the assets to.
     remove_item_props : list of str
         List of regex patterns to remove from item properties.
         If None, no properties are removed.
