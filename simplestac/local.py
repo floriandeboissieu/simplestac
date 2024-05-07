@@ -153,7 +153,7 @@ def stac_proj_info(bbox, gsd, meta):
     
     return proj_info
 
-def stac_raster_info(meta, tags, scales, offsets):
+def stac_raster_info(meta, tags, gsd, scales, offsets):
     """Raster information returned in the STAC format.
 
     Parameters
@@ -162,6 +162,8 @@ def stac_raster_info(meta, tags, scales, offsets):
         Metadata dict returned by rasterio.
     tags : dict
         Tags returned by rasterio.
+    gsd : float
+        Ground sample distance.
     scales : list
         Scales returned by rasterio.
     offsets : list
@@ -170,8 +172,15 @@ def stac_raster_info(meta, tags, scales, offsets):
     Returns
     -------
     dict
-        bands
-        with prefix `raster:`
+        STAC extension raster information, with prefix `raster:bands`
+    
+    See also
+    --------
+    simplestac.local.get_rio_info
+    
+    Notes
+    -----
+    See https://github.com/stac-extensions/raster
     """
     bands = [{}]
     if "nodata" in meta and meta["nodata"] is not None:
@@ -180,8 +189,10 @@ def stac_raster_info(meta, tags, scales, offsets):
         bands[0]["sampling"] = tags["AREA_OR_POINT"].lower()
     if "dtype" in meta:
         bands[0]["datatype"] = meta["dtype"]
-    if "resolution" in tags:
-        bands[0]["spatial_resolution"] = tags["resolution"]
+    
+    # 'resolution' is not always in tags, thus gsd is used instead.
+    bands[0]["spatial_resolution"] = gsd
+    
     if scales is not None:
         bands[0]["scale"] = scales[0]
     if offsets is not None:
@@ -347,7 +358,7 @@ def stac_asset_info_from_raster(band_file, band_fmt=None):
     # It could be set at the item level otherwise.
     proj_info = stac_proj_info(bbox, gsd, meta)
     stac_fields.update(proj_info)
-    raster_info = stac_raster_info(meta, tags, scales, offsets)
+    raster_info = stac_raster_info(meta, tags, gsd, scales, offsets)
     stac_fields.update(raster_info)
     
     return stac_fields
