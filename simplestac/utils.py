@@ -27,6 +27,34 @@ logger = logging.getLogger(__name__)
 
 
 #### Generic functions and classes ####
+# Adds GDAL_HTTP_MAX_RETRY and GDAL_HTTP_RETRY_DELAY to
+# stackstac.rio_reader.DEFAULT_GDAL_ENV
+# https://github.com/microsoft/PlanetaryComputerExamples/issues/279
+# while waiting for a PR to be merged: https://github.com/gjoseph92/stackstac/pull/232
+# See also https://github.com/gjoseph92/stackstac/issues/18
+DEFAULT_GDAL_ENV = stackstac.rio_reader.LayeredEnv(
+    always=dict(
+        GDAL_HTTP_MULTIRANGE="YES",  # unclear if this actually works
+        GDAL_HTTP_MERGE_CONSECUTIVE_RANGES="YES",
+        # ^ unclear if this works either. won't do much when our dask chunks are aligned to the dataset's chunks.
+        GDAL_HTTP_MAX_RETRY="5",
+        GDAL_HTTP_RETRY_DELAY="1",
+    ),
+    open=dict(
+        GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
+        # ^ stop GDAL from requesting `.aux` and `.msk` files from the bucket (speeds up `open` time a lot)
+        VSI_CACHE=True
+        # ^ cache HTTP requests for opening datasets. This is critical for `ThreadLocalRioDataset`,
+        # which re-opens the same URL many times---having the request cached makes subsequent `open`s
+        # in different threads snappy.
+    ),
+    read=dict(
+        VSI_CACHE=False
+        # ^ *don't* cache HTTP requests for actual data. We don't expect to re-request data,
+        # so this would just blow out the HTTP cache that we rely on to make repeated `open`s fast
+        # (see above)
+    ),
+)
 
 S2_THEIA_BANDS = [f"B{i+1}" for i in range(12)]+["B8A"]
 S2_SEN2COR_BANDS = [f"B{i+1:02}" for i in range(12)]+["B8A"]
@@ -58,7 +86,7 @@ class ExtendPystacClasses:
         if not inplace:
             return x
 
-    def to_xarray(self, xy_coords="center", bbox=None, geometry=None, **kwargs):
+    def to_xarray(self, xy_coords="center", bbox=None, geometry=None, gdal_env=DEFAULT_GDAL_ENV, **kwargs):
         """Returns a DASK xarray()
         
         This is a proxy to stackstac.stac
@@ -92,7 +120,7 @@ class ExtendPystacClasses:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
             try:
-                arr = stackstac.stack(self, xy_coords=xy_coords, **kwargs)
+                arr = stackstac.stack(self, xy_coords=xy_coords, gdal_env=gdal_env, **kwargs)
             except ValueError as e:
                 if "Cannot automatically compute the resolution" in str(e):
                     raise ValueError(str(e)+"\nOr drop non-raster assets from collection with ItemCollection.drop_non_raster()")
@@ -102,6 +130,8 @@ class ExtendPystacClasses:
         if bbox is not None:
             arr = arr.rio.clip_box(*bbox)
         if geometry is not None:
+            if isinstance(geometry, gpd.GeoDataFrame):
+                geometry = geometry.geometry
             if hasattr(geometry, 'crs') and not geometry.crs.equals(arr.rio.crs):
                 logger.debug(f"Reprojecting geometry from {geometry.crs} to {arr.rio.crs}")
                 geometry = geometry.to_crs(arr.rio.crs)
@@ -337,6 +367,8 @@ class ExtendPystacClasses:
         inplace : bool, optional
             Whether to modify the collection in place. Defaults to False.
             In that case, a cloned collection is returned.
+        datetime : datetime, optional
+            A datetime to filter the items with. Defaults to None.
         bbox : tuple, optional
             A bounding box to clip_box the items with. Defaults to None.
         geometry : shapely.geometry, optional
@@ -566,12 +598,16 @@ class ItemCollection(pystac.ItemCollection, ExtendPystacClasses):
 DEFAULT_REMOVE_PROPS = ['.*percentage', 'eo:cloud_cover', '.*mean_solar.*']
 
 def write_assets(x: Union[ItemCollection, pystac.Item],
-                 output_dir: str, bbox=None, update=True,
+                 output_dir: str,
+                 bbox=None,
+                 geometry=None,
+                 update=True,
                  xy_coords='center', 
                  remove_item_props=DEFAULT_REMOVE_PROPS,
                  overwrite=False,
                  progress=True,
                  writer_args=None,
+                 inplace=False,
                  **kwargs):
     """
     Writes item(s) assets to the specified output directory.
@@ -586,7 +622,17 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
     output_dir : str
         The directory to write the assets to.
     bbox : Optional
-        The bounding box to clip the assets to.
+        Argument forwarded to ItemCollection.to_xarray.
+        The bounding box (in the CRS of the items) to clip the assets to.
+    geometry : Optional
+        Argument forwarded to ItemCollection.to_xarray to rioxarray.clip the assets to.
+        Usually a GeoDataFrame or GeoSeries.
+        See notes.
+    update : bool, optional
+        Whether to update the item properties with the new asset paths.
+        Defaults to True.
+    xy_coords : str, optional
+        The coordinate system to use for the x and y coordinates of the
     remove_item_props : list of str
         List of regex patterns to remove from item properties.
         If None, no properties are removed.
@@ -595,6 +641,8 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
     writer_args : dict, optional
         Arguments to pass to write_raster for each asset. Defaults to `None`.
         See Notes for an example.
+    inplace : bool, optional
+        Whether to modify the input collection in place or clone it. Defaults to False (i.e. clone).
     **kwargs
         Additional keyword arguments passed to write_raster.
 
@@ -602,15 +650,44 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
     -------
     ItemCollection
         The item collection with the metadata updated with local asset paths.
+    
+    Notes
+    -----
+    Arguments `bbox` and `geometry` are to ways to clip the assets before writing.
+    Although they look similar, they may lead to different results. 
+    First, `bbox` does not have CRS, thus it is to the user to know
+    in which CRS x.to_xarray() will be before being clipped. If geometry is used instead,
+    it is automatically converted to the collection xarray CRS.
+    Second, as we use the default arguments for rio.clip and rio.clip_box,
+    the clip_box with bbox will contain all touched pixels while the clip with geometry will
+    contain only pixels whose center is within the polygon (all_touched=False).
+    Adding a buffer of resolution/2 could be a workaround to avoid that,
+    i.e. keep all touched pixels while clipping with a geometry.
+
+    The `writer_args` argument can be used to specify the writing arguments (e.g. encoding) for specific assets.
+    Thus, it must be a dictionary with the keys corresponding to asset keys.
+    If the asset key is not in `writer_args`, the `kwargs` are passed to `write_raster`.
+    The following example would encode the B02 band as int16, and the rest of the assets as float:
+    writer_args = {
+        "B02": {
+            "encoding": {
+                "dtype": "int16",
+            }
+        }
+    }
+
     """    
     if isinstance(x, pystac.Item):
-        x = [x]
+        x = ItemCollection([x])
+    
+    if not inplace:
+        x = x.clone()
 
     output_dir = Path(output_dir).expand()
     items = []
     for item in tqdm(x, disable=not progress):
         ic = ItemCollection([item], clone_items=True)
-        arr = ic.to_xarray(bbox=bbox, xy_coords=xy_coords, ).squeeze("time")
+        arr = ic.to_xarray(bbox=bbox, geometry=geometry,xy_coords=xy_coords, ).squeeze("time")
         item_dir = (output_dir / item.id).mkdir_p()
         for b in arr.band.values:
             filename = '_'.join([item.id, b+'.tif'])
@@ -649,7 +726,8 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
             logger.info(f'Item "{item.id}" is empty, skipping it.')
             item_dir.rmtree_p()
     
-    return ItemCollection(items, clone_items=False)
+    if not inplace:
+        return x
 
 def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROPS):
     """Update item bbox, geometry and proj:epsg introspecting assets.
@@ -957,7 +1035,7 @@ def harmonize_sen2cor_offset(x, bands=S2_SEN2COR_BANDS, inplace=False):
                     item.assets[asset].extra_fields["raster:bands"] = [dict(offset=-1000)]
                 else:
                     item.assets[asset].extra_fields["raster:bands"] = [dict(offset=0)]
-    if inplace:
+    if not inplace:
         return x
 
 def extract_points(x, points, method=None, tolerance=None, drop=False):

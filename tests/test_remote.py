@@ -1,6 +1,8 @@
 from simplestac.utils import write_assets, ItemCollection, harmonize_sen2cor_offset
 import planetary_computer as pc
 import pystac_client
+from tempfile import TemporaryDirectory
+import numpy as np
 
 URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
 
@@ -80,6 +82,11 @@ def test_write_assets(roi, s2scene_pc_dir):
     assert len(item.assets) == len(s2scene_pc_dir.dirs()[0].files("*.tif"))
     assert item.assets["B08"].href.startswith(s2scene_pc_dir)
     assert new_col[0].assets["B08"].extra_fields["raster:bands"][0]["scale"] == 0.001
+
+    with TemporaryDirectory(prefix="simplestac-tests_") as tempdir:
+        new_col2 = write_assets(col, tempdir, geometry=roi.buffer(5), encoding=encoding)
+        assert len(new_col2) == len(new_col)
+        assert new_col2[0].bbox == new_col[0].bbox
     
 
     

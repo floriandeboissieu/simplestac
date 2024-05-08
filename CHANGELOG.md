@@ -6,6 +6,7 @@
 - function `harmonize_sen2cor_offset`: adds an `offset` property to the assets so it is taken into account by `to_xarray`.
 - method `ItemCollection.drop_duplicates`: drop duplicated ID returned by pgstac.
 - method `ItemCollection.drop_non_raster`: drop non raster assets.
+- method `ItemCollection.to_xarray` default arg `gdal_env`: now it inlcudes GDAL retries in case of failure while reading url
 - function `extract_points` and method `ItemCollection.extract_points` to extract points time series.
 - `writer_args` to `ItemCollection.apply_...` methods and function in order to specify the outputs format, e.g. the encoding.
 - in local.py, `start_datetime` and `end_datetime` can now be used instead of `datetime` in the template used to build a local ItemCollection.

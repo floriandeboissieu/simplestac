@@ -7,6 +7,7 @@ logging.basicConfig(level=logging.INFO)
 
 here = Path(__file__).parent
 download_script = here / "download_data.py"
+print("Downloading the test data...")
 exec(open(download_script).read())
 
 @pytest.fixture(scope="session")
