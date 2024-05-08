@@ -604,6 +604,7 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
                  overwrite=False,
                  progress=True,
                  writer_args=None,
+                 inplace=False,
                  **kwargs):
     """
     Writes item(s) assets to the specified output directory.
@@ -637,7 +638,10 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
         The item collection with the metadata updated with local asset paths.
     """    
     if isinstance(x, pystac.Item):
-        x = [x]
+        x = ItemCollection([x])
+    
+    if not inplace:
+        x = x.clone()
 
     output_dir = Path(output_dir).expand()
     items = []
@@ -682,7 +686,8 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
             logger.info(f'Item "{item.id}" is empty, skipping it.')
             item_dir.rmtree_p()
     
-    return ItemCollection(items, clone_items=False)
+    if not inplace:
+        return x
 
 def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROPS):
     """Update item bbox, geometry and proj:epsg introspecting assets.
