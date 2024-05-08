@@ -30,7 +30,7 @@ pages:
     - micromamba activate simplestac
     - micromamba env list
     - pip install -e .
-    - version=`fordead --version| sed -E 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/'`
+    - version=`python -m setuptools_scm | sed -E 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/'`
     - echo $version
     - echo "{\"version\":\"$version\"}" > badges.json
     - cp -r examples docs/

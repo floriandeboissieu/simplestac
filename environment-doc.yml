@@ -16,6 +16,7 @@ dependencies:
   # - mkdocs-gen-files
   # - mkdocs-literate-nav
   - portray
+  - setuptools_scm
   - pip:
     - mdx-breakless-lists
     - mkdocs-section-index
