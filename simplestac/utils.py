@@ -598,7 +598,10 @@ class ItemCollection(pystac.ItemCollection, ExtendPystacClasses):
 DEFAULT_REMOVE_PROPS = ['.*percentage', 'eo:cloud_cover', '.*mean_solar.*']
 
 def write_assets(x: Union[ItemCollection, pystac.Item],
-                 output_dir: str, bbox=None, update=True,
+                 output_dir: str,
+                 bbox=None,
+                 geometry=None,
+                 update=True,
                  xy_coords='center', 
                  remove_item_props=DEFAULT_REMOVE_PROPS,
                  overwrite=False,
@@ -621,6 +624,15 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
     bbox : Optional
         Argument forwarded to ItemCollection.to_xarray.
         The bounding box (in the CRS of the items) to clip the assets to.
+    geometry : Optional
+        Argument forwarded to ItemCollection.to_xarray to rioxarray.clip the assets to.
+        Usually a GeoDataFrame or GeoSeries.
+        See notes.
+    update : bool, optional
+        Whether to update the item properties with the new asset paths.
+        Defaults to True.
+    xy_coords : str, optional
+        The coordinate system to use for the x and y coordinates of the
     remove_item_props : list of str
         List of regex patterns to remove from item properties.
         If None, no properties are removed.
@@ -629,6 +641,8 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
     writer_args : dict, optional
         Arguments to pass to write_raster for each asset. Defaults to `None`.
         See Notes for an example.
+    inplace : bool, optional
+        Whether to modify the input collection in place or clone it. Defaults to False (i.e. clone).
     **kwargs
         Additional keyword arguments passed to write_raster.
 
@@ -636,6 +650,32 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
     -------
     ItemCollection
         The item collection with the metadata updated with local asset paths.
+    
+    Notes
+    -----
+    Arguments `bbox` and `geometry` are to ways to clip the assets before writing.
+    Although they look similar, they may lead to different results. 
+    First, `bbox` does not have CRS, thus it is to the user to know
+    in which CRS x.to_xarray() will be before being clipped. If geometry is used instead,
+    it is automatically converted to the collection xarray CRS.
+    Second, as we use the default arguments for rio.clip and rio.clip_box,
+    the clip_box with bbox will contain all touched pixels while the clip with geometry will
+    contain only pixels whose center is within the polygon (all_touched=False).
+    Adding a buffer of resolution/2 could be a workaround to avoid that,
+    i.e. keep all touched pixels while clipping with a geometry.
+
+    The `writer_args` argument can be used to specify the writing arguments (e.g. encoding) for specific assets.
+    Thus, it must be a dictionary with the keys corresponding to asset keys.
+    If the asset key is not in `writer_args`, the `kwargs` are passed to `write_raster`.
+    The following example would encode the B02 band as int16, and the rest of the assets as float:
+    writer_args = {
+        "B02": {
+            "encoding": {
+                "dtype": "int16",
+            }
+        }
+    }
+
     """    
     if isinstance(x, pystac.Item):
         x = ItemCollection([x])
@@ -647,7 +687,7 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
     items = []
     for item in tqdm(x, disable=not progress):
         ic = ItemCollection([item], clone_items=True)
-        arr = ic.to_xarray(bbox=bbox, xy_coords=xy_coords, ).squeeze("time")
+        arr = ic.to_xarray(bbox=bbox, geometry=geometry,xy_coords=xy_coords, ).squeeze("time")
         item_dir = (output_dir / item.id).mkdir_p()
         for b in arr.band.values:
             filename = '_'.join([item.id, b+'.tif'])
