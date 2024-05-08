@@ -40,7 +40,7 @@ pages:
   artifacts:
     paths:
       - public
-      - version
+      - badges.json
   rules:
    - if: $CI_COMMIT_BRANCH == "pages" || $CI_COMMIT_BRANCH == "main"
 
