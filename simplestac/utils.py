@@ -130,6 +130,8 @@ class ExtendPystacClasses:
         if bbox is not None:
             arr = arr.rio.clip_box(*bbox)
         if geometry is not None:
+            if isinstance(geometry, gpd.GeoDataFrame):
+                geometry = geometry.geometry
             if hasattr(geometry, 'crs') and not geometry.crs.equals(arr.rio.crs):
                 logger.debug(f"Reprojecting geometry from {geometry.crs} to {arr.rio.crs}")
                 geometry = geometry.to_crs(arr.rio.crs)
