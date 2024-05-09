@@ -401,7 +401,7 @@ def properties_from_assets(assets, update_assets=True):
 
 
 
-def stac_item_parser(item_dir, fmt, assets=None):
+def stac_item_parser(item_dir, fmt, assets=None, expand_end_date=True):
     """Parse the item information from the scene directory.
 
     Parameters
@@ -414,7 +414,13 @@ def stac_item_parser(item_dir, fmt, assets=None):
     assets : dict, optional
         The assets information, by default None.
         See `stac_asset_info_from_raster`.
-
+    expand_end_date : bool, optional
+        Whether to expand the end_date to the last second of the day, by default True.
+        At the moment, the STAC specs considers end_datetime as inclusive, which means that
+        if end date is 2019-12-31, it should default to 2019-12-31T23:59:59.999999999Z.
+        We simplify it to 2019-12-31T23:59:59Z.
+        See https://github.com/radiantearth/stac-spec/issues/1255.
+    
     Returns
     -------
     dict
@@ -459,6 +465,11 @@ def stac_item_parser(item_dir, fmt, assets=None):
                     dt = to_datetime(dt.group(1), format=v["format"])
                     dt_dict[k] = dt
     
+    # have end_datetime inclusive
+    if expand_end_date:
+        if "end_datetime" in dt_dict:
+            dt_dict["end_datetime"] = to_datetime(dt_dict["end_datetime"].date()) + timedelta(days=1, seconds= -1)
+
     # parsing id, default is the image directory name
     if "id" in fmt and "pattern" in fmt["id"]:
         match = re.match(fmt["id"]["pattern"], item_dir.name)
