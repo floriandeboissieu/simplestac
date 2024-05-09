@@ -1,3 +1,8 @@
+# v1.1.1
+
+## Fix
+- end_datetime expanding by default to the end of the day in seconds, e.g. 2019-12-31T23:59:59Z.
+
 # v1.1.0
 
 ## Add
