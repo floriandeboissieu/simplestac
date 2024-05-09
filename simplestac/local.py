@@ -5,7 +5,7 @@ from a series of scenes/images in local files.
 ## TODO: see if rio-cogeo would simplify the code and externalise
 # the parsing of the metadata from the band files.
 
-
+from datetime import timedelta
 import json
 import geopandas as gpd
 import logging
