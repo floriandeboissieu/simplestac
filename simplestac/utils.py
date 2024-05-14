@@ -608,6 +608,7 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
                  progress=True,
                  writer_args=None,
                  inplace=False,
+                 modifier=None,
                  **kwargs):
     """
     Writes item(s) assets to the specified output directory.
@@ -643,6 +644,11 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
         See Notes for an example.
     inplace : bool, optional
         Whether to modify the input collection in place or clone it. Defaults to False (i.e. clone).
+    modifier : function, optional
+        A callable that modifies the children collection and items
+        returned by this Client. This can be useful for injecting
+        authentication parameters into child assets to access data
+        from non-public sources, see pystac_client.Client for details.
     **kwargs
         Additional keyword arguments passed to write_raster.
 
@@ -687,6 +693,8 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
     items = []
     for item in tqdm(x, disable=not progress):
         ic = ItemCollection([item], clone_items=True)
+        if modifier is not None:
+            ic = modifier(ic)
         arr = ic.to_xarray(bbox=bbox, geometry=geometry,xy_coords=xy_coords, ).squeeze("time")
         item_dir = (output_dir / item.id).mkdir_p()
         for b in arr.band.values:
