@@ -1103,3 +1103,63 @@ def extract_points(x, points, method=None, tolerance=None, drop=False):
     points = x.sel(coords.to_xarray(), method=method, tolerance=tolerance, drop=drop)
     return points
 #######################################
+
+################# Some useful functions for xarrays ###############
+def add_reduced_coords(da, da1, dim):
+    """Add reduced coords to xarray
+
+    When reducing xarray along a dimension,
+    it drops all coordinates linked to that dimension.
+    This function adds them back if they have unique
+    values along that dimension.
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        The reference dataarray.
+    da1 : xarray.DataArray
+        The reduced dataarray.
+    dim : str
+        The reduced dimension.
+
+    Returns
+    -------
+    xarray.DataArray
+        The dataarray with added coords.
+    
+    Notes
+    -----
+    See issue https://github.com/pydata/xarray/issues/8317
+        
+    Examples
+    --------
+    >>> import xarray as xr
+    >>> import numpy as np
+    >>> N=6
+    >>> da = xr.DataArray(np.arange(1.*N**3).reshape(N,N,N), dims=["x", "y", "time"], 
+    ...               coords={
+    ...                   "x": np.arange(N),
+    ...                   "y": np.arange(N),
+    ...                   "time": [pd.NaT]*N,
+    ...                   "start": ("time", [1.]*3 + [3.]*3),
+    ...                   "end": ("time", ["2."]*2 + ["2."]+ ["4."]*3),
+    ...                   "tile":("time", ["16PFS", "16PGS", "16PKS"]*2),
+    ...                   "autre": "autre",})
+    >>> da = da.set_xindex(["start", "tile"]).unstack("time")
+    >>> da1 = da.mean("time")
+    >>> add_reduced_coords(da, da1, "time")
+    """
+    for k,c in da.coords.items():
+        if len(c.dims) > 0 and dim in c.dims:
+            axis = np.where(np.array(c.dims)==dim)[0]
+            # unique coordinate values along axis
+            uc = np.unique(c, axis=axis).squeeze()
+            # new coordinate dims
+            nd = list(c.dims)
+            nd.remove(dim)
+            # try to add it, if it fails we just ignore it
+            try:
+                da1 = da1.assign_coords({k:(nd, uc)})
+            except:
+                pass
+    return da1
