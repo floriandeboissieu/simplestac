@@ -67,14 +67,13 @@ def test_write_assets(roi, s2scene_pc_dir):
 
     col = ItemCollection(search.item_collection()).drop_non_raster()
     bbox = roi.to_crs(col.to_xarray().rio.crs).total_bounds
-    col = pc.sign(col)
     encoding=dict(
         dtype="int16", 
         scale_factor=0.001,
         add_offset=0.0,
         _FillValue=-9999,
     )
-    new_col = write_assets(col, s2scene_pc_dir, bbox=bbox, encoding=encoding)
+    new_col = write_assets(col, s2scene_pc_dir, bbox=bbox, encoding=encoding, modifier=pc.sign_inplace)
     assert len(new_col) == len(col)
     assert len(new_col) == len(s2scene_pc_dir.dirs())
     item = new_col[0]
@@ -84,7 +83,7 @@ def test_write_assets(roi, s2scene_pc_dir):
     assert new_col[0].assets["B08"].extra_fields["raster:bands"][0]["scale"] == 0.001
 
     with TemporaryDirectory(prefix="simplestac-tests_") as tempdir:
-        new_col2 = write_assets(col, tempdir, geometry=roi.buffer(5), encoding=encoding)
+        new_col2 = write_assets(col, tempdir, geometry=roi.buffer(5), encoding=encoding, modifier=pc.sign_inplace)
         assert len(new_col2) == len(new_col)
         assert new_col2[0].bbox == new_col[0].bbox
     

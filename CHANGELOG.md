@@ -1,3 +1,12 @@
+# v1.1.1
+
+## Add
+- add modifier to write_assets
+- add function add_reduced_coords to fix the issue https://github.com/pydata/xarray/issues/8317
+
+## Fix
+- end_datetime expanding by default to the end of the day in seconds, e.g. 2019-12-31T23:59:59Z.
+
 # v1.1.0
 
 ## Add
