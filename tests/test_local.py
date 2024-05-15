@@ -45,19 +45,35 @@ def test_datetime(s2scene_dir):
 
 def test_apply_items(s2scene_dir, roi):
     col = build_item_collection(s2scene_dir, collection_format())
-    NDVI_dir = s2scene_dir.parent / "NDVI"
-    NDVI_dir.rmtree_p()
+    output_dir = s2scene_dir.parent / "NDVI"
+    output_dir.rmtree_p()
     col.apply_items(
         apply_formula, 
         name="NDVI",
         geometry=roi.geometry,
         formula="((B08-B04)/(B08+B04))",
-        output_dir=NDVI_dir,
+        output_dir=output_dir,
         inplace=True)
     assert "NDVI" in col.items[-1].assets
-    assert len(NDVI_dir.files()) == len(col)
+    assert len(output_dir.files()) == len(col)
     # check if COG
     assert col.items[-1].assets["NDVI"].media_type == pystac.MediaType.COG
+
+    # with collection_ready
+    output_dir = s2scene_dir.parent / "S2-SSI"
+    output_dir.rmtree_p()
+    col.apply_items(
+        apply_formula, 
+        name="NDVI",
+        geometry=roi.geometry,
+        formula="((B08-B04)/(B08+B04))",
+        output_dir=output_dir,
+        collection_ready=True,
+        inplace=True)
+    assert "NDVI" in col.items[-1].assets
+    assert len(output_dir.dirs()) == len(col)
+
+
 
 def test_apply_rolling(s2scene_dir):
     col = build_item_collection(s2scene_dir, collection_format())
@@ -76,7 +92,24 @@ def test_apply_rolling(s2scene_dir):
     assert "B07_diff" in col.items[-1].assets
     assert len(output_dir.files()) == (len(col)-1)
 
-  
+    # with collection_ready and multiple outputs
+    def band_diff(x, bands=["B07", "B08"]):
+        if len(x.time) > 1:
+            res = x.sel(band=bands).diff("time")
+            return tuple([res.sel(band=b) for b in bands])
+    output_dir = s2scene_dir.parent / "S2-diff"
+    output_dir.rmtree_p()
+    col.apply_rolling(
+        band_diff, 
+        name=["B07_diff", "B08_diff"],
+        output_dir=output_dir,
+        collection_ready=True,
+        inplace=True,
+        window=2)
+    assert "B07_diff" in col.items[-1].assets
+    assert len(output_dir.dirs()) == (len(col)-1)
+    assert len(list(output_dir.walkfiles())) == (len(col)-1)*2
+
 
 def test_apply_items_raster_args(s2scene_dir, roi):
     col = build_item_collection(s2scene_dir, collection_format())

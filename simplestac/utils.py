@@ -364,6 +364,7 @@ class ExtendPystacClasses:
     def apply_items(self, fun,
                     name,
                     output_dir,
+                    collection_ready=False,
                     overwrite=False,
                     inplace=False,
                     datetime=None,
@@ -386,6 +387,9 @@ class ExtendPystacClasses:
             This also serves as the file name suffix: "{item.id}_{name}.tif"
         output_dir : str
             The directory where the output will be saved. Created if it does not exist.
+        collection_ready : bool, optional
+            If True, the assets directory will be `output_dir / item.id`, ready for a pystac.Collection.
+            Defaults to False.
         overwrite : bool, optional
             Whether to overwrite existing files. Defaults to False.
         inplace : bool, optional
@@ -421,16 +425,18 @@ class ExtendPystacClasses:
 
         for item in tqdm(x.items, disable=not progress):
             apply_item(item, fun, name=name, output_dir=output_dir,
-                            overwrite=overwrite, copy=False, 
-                            bbox=bbox, geometry=geometry,
-                            writer_args=writer_args,
-                            **kwargs)
+                        collection_ready=collection_ready,
+                        overwrite=overwrite, copy=False, 
+                        bbox=bbox, geometry=geometry,
+                        writer_args=writer_args,
+                        **kwargs)
         if not inplace:
             return x
 
     def apply_rolling(self, fun, 
                       name, 
                       output_dir,
+                      collection_ready=False,
                       overwrite=False,
                       window=2,
                       inplace=False,
@@ -455,6 +461,8 @@ class ExtendPystacClasses:
             This also serves as the file name suffix: "{item.id}_{name}.tif"
         output_dir : str
             The directory where the output will be saved. Created if it does not exist.
+        collection_ready : bool, optional
+            If True, the assets directory will be `output_dir / item.id`, ready for a pystac.Collection.
         overwrite : bool, optional
             Whether to overwrite existing files. Defaults to False.
         inplace : bool, optional
@@ -512,15 +520,24 @@ class ExtendPystacClasses:
                 raise ValueError("Argument `writer_args` must have length 1 or the same length as `name`.")
         
         Nout = len(name)
-        
         output_dir = [Path(d).expand().mkdir_p() for d in output_dir] # make sure they exist 
+
         for i in tqdm(range(len(x.items)), disable=not progress):
             subitems = x.items[max((i-window+1),0):i+1]
+            item_id = x.items[i].id
+
             if center:
+                if window%2 == 0:
+                    raise ValueError("window must be odd if center=True")
                 subitems = x.items[max(i-window//2,0):i+(window-1)//2+1]
 
             subcol = self.__class__(subitems, clone_items=False)
-            raster_file = [d / f"{subitems[-1].id}_{n}.tif" for n, d in zip(name, output_dir)]
+            raster_dir = output_dir
+            if collection_ready:
+                raster_dir = [(d / item_id) for d in output_dir]
+            raster_file = [d / f"{item_id}_{n}.tif" for n, d in zip(name, raster_dir)]
+            
+
             if not overwrite and all([r.exists() for r in raster_file]):
                 logger.debug(f"File already exists, skipping computation: {raster_file}")
                 res = tuple([None]*Nout)
@@ -528,6 +545,8 @@ class ExtendPystacClasses:
                 # compute fun
                 with xr.set_options(keep_attrs=True):
                     res = fun(subcol.to_xarray(bbox=bbox, geometry=geometry), **kwargs)
+                if res is None:
+                    continue
                 if not isinstance(res, tuple):
                     res = (res,)
                 if len(res) != Nout:
@@ -538,6 +557,7 @@ class ExtendPystacClasses:
                     # write result
                     logger.debug("Writing: ", f)
                     r.name = n
+                    f.parent.mkdir_p()
                     write_raster(r, f, overwrite=overwrite, **wa)
                     
             for n, f in zip(name, raster_file):
@@ -801,7 +821,7 @@ def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROP
         for k in pop_props:
             x.properties.pop(k)
 
-def apply_item(x, fun, name, output_dir, overwrite=False,
+def apply_item(x, fun, name, output_dir, collection_ready=False, overwrite=False,
                copy=True, bbox=None, geometry=None, writer_args=None, **kwargs):
     """
     Applies a function to an item in a collection, 
@@ -818,6 +838,9 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
         The name or names of the output raster file(s).
     output_dir : str or list of str
         The directory or directories to save the output raster file(s) to.
+    collection_ready : bool, optional
+        If True, the assets directory will be `output_dir / item.id`, ready for a pystac.Collection.
+        Defaults to `False`.
     overwrite : bool, optional
         Whether to overwrite existing raster files. Defaults to `False`.
     copy : bool, optional
@@ -895,6 +918,10 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
     Nout = len(name)
     output_dir = [Path(d).expand().mkdir_p() for d in output_dir] 
     
+    # add item id level: output_dir / item.id
+    if collection_ready:
+        output_dir = [(d / x.id).mkdir_p() for d in output_dir]
+
     raster_file = [d / f"{x.id}_{n}.tif" for n, d in zip(name, output_dir)]
     if not overwrite and all([r.exists() for r in raster_file]):
         logger.debug(f"File already exists, skipping computation: {raster_file}")
