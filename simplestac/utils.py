@@ -1049,7 +1049,7 @@ def apply_formula(x, formula):
     x : xarray.DataArray
         It should have a 'band' dimension with the names that will be used by formula.
     formula : str
-        Formula, e.g. "B02>700", "CLM > 0", "SLC in [4,5]", "(B08-B06)/(B08+B06)"
+        Formula, e.g. "B02 > 600", "CLM > 0", "B02 > 600 | ~SLC in [4,5]", "(B08-B06)/(B08+B06)"
 
     Returns
     -------
