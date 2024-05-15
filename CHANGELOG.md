@@ -1,3 +1,6 @@
+# v1.1.2
+- fix issue of drop_non_raster with no proj:bbox: now looking for any "proj:" or "raster:" properties
+
 # v1.1.1
 
 ## Add
