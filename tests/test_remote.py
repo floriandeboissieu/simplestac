@@ -6,31 +6,13 @@ import numpy as np
 
 URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
 
-def test_to_xarray(roi, s2scene_pc_dir):
-    time_range = "2022-01-01/2022-01-31"
-
-    catalog = pystac_client.Client.open(URL, modifier=pc.sign_inplace)
-    search = catalog.search(
-        collections=["sentinel-2-l2a"],
-        bbox=roi.to_crs(4326).total_bounds,
-        datetime=time_range,
-        sortby="datetime",
-    )
-    col = ItemCollection(search.item_collection())
+def test_to_xarray(pc_col, roi):
+    col = ItemCollection(pc_col)
     x = col.drop_non_raster().to_xarray()
     assert len(x.time) == len(col)
 
-def test_offset_harmonization(roi, s2scene_pc_dir):
-    time_range = "2022-01-20/2022-01-31"
-
-    catalog = pystac_client.Client.open(URL, modifier=pc.sign_inplace)
-    search = catalog.search(
-        collections=["sentinel-2-l2a"],
-        bbox=roi.to_crs(4326).total_bounds,
-        datetime=time_range,
-        sortby="datetime",
-    )
-    col = search.item_collection()
+def test_offset_harmonization(pc_col):
+    col = ItemCollection(pc_col)
     harmonize_sen2cor_offset(col, inplace=True)
     of0 = col[0].assets["B02"].extra_fields["raster:bands"][0]["offset"]
     ofN = col[-1].assets["B02"].extra_fields["raster:bands"][0]["offset"]
@@ -38,34 +20,31 @@ def test_offset_harmonization(roi, s2scene_pc_dir):
     assert of0 == 0
     assert ofN == -1000
 
-def test_drop_duplicates(roi, s2scene_pc_dir):
-    time_range = "2022-01-20/2022-01-31"
-    catalog = pystac_client.Client.open(URL, modifier=pc.sign_inplace)
-    search = catalog.search(
-        collections=["sentinel-2-l2a"],
-        bbox=roi.to_crs(4326).total_bounds,
-        datetime=time_range,
-        sortby="datetime",
-    )
-    col = search.item_collection()
+def test_drop_duplicates(pc_col):
+    col = ItemCollection(pc_col)
     col1 = ItemCollection(col.clone()+col.clone())
+    assert len(col1) == 2*len(col)
     col1.drop_duplicates(inplace=True)
     assert len(col1) == len(col)
 
-def test_write_assets(roi, s2scene_pc_dir):
+def test_drop_non_raster(pc_col):
+    col = ItemCollection(pc_col)
+    col1 = col.drop_non_raster()
+    assert "preview" in col[0].assets
+    assert "preview" not in col1[0].assets
+
+def test_filter(pc_col):
+    col = ItemCollection(pc_col)
+    col1 = col.filter(assets="B02")
+    assert "B03" in col[0].assets
+    assert "B03" not in col1[0].assets
+
+def test_write_assets(pc_col, roi, s2scene_pc_dir):
 
     s2scene_pc_dir.rmtree_p().mkdir_p()
-    time_range = "2016-01-01/2016-01-31"
 
-    catalog = pystac_client.Client.open(URL)
-    search = catalog.search(
-        collections=["sentinel-2-l2a"],
-        bbox=roi.to_crs(4326).total_bounds,
-        datetime=time_range,
-        query={"eo:cloud_cover": {"lt": 80}},
-    )
-
-    col = ItemCollection(search.item_collection()).drop_non_raster()
+    col = ItemCollection(pc_col)
+    col.drop_non_raster(inplace=True)
     bbox = roi.to_crs(col.to_xarray().rio.crs).total_bounds
     encoding=dict(
         dtype="int16", 
@@ -86,6 +65,7 @@ def test_write_assets(roi, s2scene_pc_dir):
         new_col2 = write_assets(col, tempdir, geometry=roi.buffer(5), encoding=encoding, modifier=pc.sign_inplace)
         assert len(new_col2) == len(new_col)
         assert new_col2[0].bbox == new_col[0].bbox
-    
+
+
 
     
