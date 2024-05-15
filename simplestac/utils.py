@@ -62,11 +62,15 @@ S2_SEN2COR_BANDS = [f"B{i+1:02}" for i in range(12)]+["B8A"]
 class ExtendPystacClasses:
     """Add capacities to_xarray and filter to pystac Catalog, Collection, ItemCollection"""
 
-    def drop_non_raster(self, inplace=False):
-        """Drop non raster assets from each item in the collection.
+    def drop_non_raster(self, pattern="^proj:|^raster:", inplace=False):
+        """Drop non raster assets from each item in the collection,
+        based on pattern searched in asset extra_fields.
         
         Parameters
         ----------
+        pattern : str
+            The pattern to search for in asset extra_fields keys.
+            Defaults to "^proj:|^raster:".
         inplace : bool
             Whether to modify the collection in place. Defaults to False.
         
@@ -81,7 +85,7 @@ class ExtendPystacClasses:
             x = self.clone()
         
         for item in x.items: 
-            drop_assets_without_proj(item, inplace=True)
+            drop_assets_without_proj(item, pattern=pattern, inplace=True)
 
         if not inplace:
             return x
@@ -89,9 +93,31 @@ class ExtendPystacClasses:
     def to_xarray(self, xy_coords="center", bbox=None, geometry=None, gdal_env=DEFAULT_GDAL_ENV, **kwargs):
         """Returns a DASK xarray()
         
-        This is a proxy to stackstac.stac
+        This is a proxy to stackstac.stack
+
+        Parameters
+        ----------
+        xy_coords : str
+            Argument passed to stackstac.stack. Defaults to "center".
+        bbox : tuple, list
+            A bounding box to clip the xarray to, in the format (xmin, ymin, xmax, ymax).
+        geometry : shapely.geometry | geopandas.GeoSeries | geopandas.GeoDataFrame
+            A geometry to clip the xarray to.
+        gdal_env : stackstac.rio_reader.LayeredEnv
+            See stackstac.rio_reader.LayeredEnv. The default is DEFAULT_GDAL_ENV,
+            which is the same as stackstac.rio_reader.DEFAULT_GDAL_ENV with the addition
+            of GDAL_HTTP_MAX_RETRY=5 and GDAL_HTTP_RETRY_DELAY=1.
+        kwargs: dict
+            Additional keyword arguments passed to stackstac.stack.
         
-        Arguments are:
+        Returns
+        -------
+        dask.DataArray
+            
+
+        Notes
+        -----
+        The parameters available in stackstac.stack:
         assets=frozenset({'image/jp2', 'image/tiff', 'image/vnd.stac.geotiff', 'image/x.geotiff'}),
         epsg=None, resolution=None, bounds=None, bounds_latlon=None,
         snap_bounds=True, resampling=Resampling.nearest, chunksize=1024,
@@ -101,12 +127,10 @@ class ExtendPystacClasses:
         errors_as_nodata=(RasterioIOError('HTTP response code: 404'), ),
         reader=<class 'stackstac.rio_reader.AutoParallelRioReader'>
 
-        For details, see [stackstac.stac](https://stackstac.readthedocs.io/en/latest/api/main/stackstac.stack.html)
+        For details, see [stackstac.stack](https://stackstac.readthedocs.io/en/latest/api/main/stackstac.stack.html).
 
-        Notes:
-        ------
         Here, xy_coords="center" is the default to be consistent with rioxarray,
-        cf https://github.com/gjoseph92/stackstac/issues/207. Otherwise, stackstac.stac has
+        cf https://github.com/gjoseph92/stackstac/issues/207. Otherwise, stackstac.stack has
         xy_coords="topleft" as the default.
 
         Also, by default it is sorted by ascending datetime, see sortby_date.
@@ -909,17 +933,25 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
             x.add_asset(key=n, asset=asset)
     return x
 
-def drop_assets_without_proj(item, inplace=False, pattern="^proj:|^raster:"):
+def drop_assets_without_proj(item, pattern="^proj:|^raster:", inplace=False):
     """
     Drops assets from the given item that do not have 
     extra_fields with "proj:" or "raster:" prefix.
 
-    Parameters:
-        item (Item): The item from which to drop assets.
-        inplace (bool, optional): If True, the assets will be dropped in place. Otherwise, a clone of the item will be created and modified.
+    Parameters
+    ----------
+    item: pystac.Item
+      The item from which to drop assets.
+    pattern: str, optional. 
+        The pattern to search for in asset extra_fields keys.
+    inplace: bool, optional
+        If True, the assets will be dropped in place.
+        Otherwise, a clone of the item will be created and modified.
 
-    Returns:
-        Item: The modified item with the dropped assets.
+    Returns
+    ------
+    pystac.Item
+        The modified item with the dropped assets.
     """
     if not inplace:
         item = item.clone()
