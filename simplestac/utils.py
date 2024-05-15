@@ -909,9 +909,10 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
             x.add_asset(key=n, asset=asset)
     return x
 
-def drop_assets_without_proj(item, inplace=False):
+def drop_assets_without_proj(item, inplace=False, pattern="^proj:|^raster:"):
     """
-    Drops assets from the given item that do not have the "proj:bbox" field in their extra_fields.
+    Drops assets from the given item that do not have 
+    extra_fields with "proj:" or "raster:" prefix.
 
     Parameters:
         item (Item): The item from which to drop assets.
@@ -922,7 +923,12 @@ def drop_assets_without_proj(item, inplace=False):
     """
     if not inplace:
         item = item.clone()
-    item.assets = {k:v for k,v in item.assets.items() if "proj:bbox" in v.extra_fields}
+    
+    item.assets = {k:v for k,v in item.assets.items() if any([bool(re.search(pattern, p)) for p in v.extra_fields])}
+    
+    if len(item.assets) == 0:
+        logger.warning(f"Item {item.id} has no raster assets.")
+
     return item
 #######################################
 
