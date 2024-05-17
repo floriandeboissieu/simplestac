@@ -640,7 +640,35 @@ class MyStacItem(object):
         return item
 
 
+def get_item_dirs(input_dir, fmt):
+    """
+    Recursively retrieves item directories based on the input directory and format.
 
+    Parameters
+    ----------
+    input_dir : str
+        The input directory to search for item directories.
+    fmt : dict
+        The format containing the pattern for item directories.
+        See `collection_format`.
+    Returns
+    -------
+    list
+        A list of item directories found based on the format.
+    """    
+    item_dirs = []
+    if isinstance(input_dir, list):
+        for d in input_dir:
+            item_dirs.extend(get_item_dirs(d, fmt))
+        return item_dirs
+
+    input_dir = Path(input_dir).expand()
+    if re.match(fmt["item"]["pattern"], input_dir.name):
+        item_dirs.append(input_dir)
+    else:
+        item_dirs = get_item_dirs(input_dir.dirs(), fmt)
+    return item_dirs
+    
 def build_item_collection(input_dir,
                           fmt, 
                           item_parser=stac_item_parser,
@@ -680,19 +708,13 @@ def build_item_collection(input_dir,
     >>> col = build_item_collection(input_dir, fmt)
     """
     from simplestac.utils import ItemCollection # avoids circular import
-
-    if isinstance(input_dir, list):
-        items = []
-        for d in input_dir:
-            col = build_item_collection(d, fmt, **kwargs)
-            items.extend(col.items)
-        return ItemCollection(items, clone_items=False, **kwargs)
     
-    input_dir = Path(input_dir).expand()
-    if re.match(fmt["item"]["pattern"], input_dir.name):
-        item_dirs = [input_dir]
-    else:
-        item_dirs =  [d for d in input_dir.dirs() if re.match(fmt["item"]["pattern"], d.name)]
+    item_dirs = get_item_dirs(input_dir, fmt)
+    
+    if len(item_dirs) == 0:
+        logger.warning(f"No item found in {input_dir}")
+        return
+    
     items = []
     logger.info("Building item collection...")
     item_creator = MyStacItem(fmt, item_parser=item_parser, asset_parser=asset_parser)

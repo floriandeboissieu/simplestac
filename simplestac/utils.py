@@ -62,11 +62,15 @@ S2_SEN2COR_BANDS = [f"B{i+1:02}" for i in range(12)]+["B8A"]
 class ExtendPystacClasses:
     """Add capacities to_xarray and filter to pystac Catalog, Collection, ItemCollection"""
 
-    def drop_non_raster(self, inplace=False):
-        """Drop non raster assets from each item in the collection.
+    def drop_non_raster(self, pattern="^proj:|^raster:", inplace=False):
+        """Drop non raster assets from each item in the collection,
+        based on pattern searched in asset extra_fields.
         
         Parameters
         ----------
+        pattern : str
+            The pattern to search for in asset extra_fields keys.
+            Defaults to "^proj:|^raster:".
         inplace : bool
             Whether to modify the collection in place. Defaults to False.
         
@@ -81,7 +85,7 @@ class ExtendPystacClasses:
             x = self.clone()
         
         for item in x.items: 
-            drop_assets_without_proj(item, inplace=True)
+            drop_assets_without_proj(item, pattern=pattern, inplace=True)
 
         if not inplace:
             return x
@@ -89,9 +93,31 @@ class ExtendPystacClasses:
     def to_xarray(self, xy_coords="center", bbox=None, geometry=None, gdal_env=DEFAULT_GDAL_ENV, **kwargs):
         """Returns a DASK xarray()
         
-        This is a proxy to stackstac.stac
+        This is a proxy to stackstac.stack
+
+        Parameters
+        ----------
+        xy_coords : str
+            Argument passed to stackstac.stack. Defaults to "center".
+        bbox : tuple, list
+            A bounding box to clip the xarray to, in the format (xmin, ymin, xmax, ymax).
+        geometry : shapely.geometry | geopandas.GeoSeries | geopandas.GeoDataFrame
+            A geometry to clip the xarray to.
+        gdal_env : stackstac.rio_reader.LayeredEnv
+            See stackstac.rio_reader.LayeredEnv. The default is DEFAULT_GDAL_ENV,
+            which is the same as stackstac.rio_reader.DEFAULT_GDAL_ENV with the addition
+            of GDAL_HTTP_MAX_RETRY=5 and GDAL_HTTP_RETRY_DELAY=1.
+        kwargs: dict
+            Additional keyword arguments passed to stackstac.stack.
         
-        Arguments are:
+        Returns
+        -------
+        dask.DataArray
+            
+
+        Notes
+        -----
+        The parameters available in stackstac.stack:
         assets=frozenset({'image/jp2', 'image/tiff', 'image/vnd.stac.geotiff', 'image/x.geotiff'}),
         epsg=None, resolution=None, bounds=None, bounds_latlon=None,
         snap_bounds=True, resampling=Resampling.nearest, chunksize=1024,
@@ -101,12 +127,10 @@ class ExtendPystacClasses:
         errors_as_nodata=(RasterioIOError('HTTP response code: 404'), ),
         reader=<class 'stackstac.rio_reader.AutoParallelRioReader'>
 
-        For details, see [stackstac.stac](https://stackstac.readthedocs.io/en/latest/api/main/stackstac.stack.html)
+        For details, see [stackstac.stack](https://stackstac.readthedocs.io/en/latest/api/main/stackstac.stack.html).
 
-        Notes:
-        ------
         Here, xy_coords="center" is the default to be consistent with rioxarray,
-        cf https://github.com/gjoseph92/stackstac/issues/207. Otherwise, stackstac.stac has
+        cf https://github.com/gjoseph92/stackstac/issues/207. Otherwise, stackstac.stack has
         xy_coords="topleft" as the default.
 
         Also, by default it is sorted by ascending datetime, see sortby_date.
@@ -340,6 +364,7 @@ class ExtendPystacClasses:
     def apply_items(self, fun,
                     name,
                     output_dir,
+                    collection_ready=False,
                     overwrite=False,
                     inplace=False,
                     datetime=None,
@@ -362,6 +387,9 @@ class ExtendPystacClasses:
             This also serves as the file name suffix: "{item.id}_{name}.tif"
         output_dir : str
             The directory where the output will be saved. Created if it does not exist.
+        collection_ready : bool, optional
+            If True, the assets directory will be `output_dir / item.id`, ready for a pystac.Collection.
+            Defaults to False.
         overwrite : bool, optional
             Whether to overwrite existing files. Defaults to False.
         inplace : bool, optional
@@ -397,16 +425,18 @@ class ExtendPystacClasses:
 
         for item in tqdm(x.items, disable=not progress):
             apply_item(item, fun, name=name, output_dir=output_dir,
-                            overwrite=overwrite, copy=False, 
-                            bbox=bbox, geometry=geometry,
-                            writer_args=writer_args,
-                            **kwargs)
+                        collection_ready=collection_ready,
+                        overwrite=overwrite, copy=False, 
+                        bbox=bbox, geometry=geometry,
+                        writer_args=writer_args,
+                        **kwargs)
         if not inplace:
             return x
 
     def apply_rolling(self, fun, 
                       name, 
                       output_dir,
+                      collection_ready=False,
                       overwrite=False,
                       window=2,
                       inplace=False,
@@ -431,6 +461,8 @@ class ExtendPystacClasses:
             This also serves as the file name suffix: "{item.id}_{name}.tif"
         output_dir : str
             The directory where the output will be saved. Created if it does not exist.
+        collection_ready : bool, optional
+            If True, the assets directory will be `output_dir / item.id`, ready for a pystac.Collection.
         overwrite : bool, optional
             Whether to overwrite existing files. Defaults to False.
         inplace : bool, optional
@@ -488,15 +520,24 @@ class ExtendPystacClasses:
                 raise ValueError("Argument `writer_args` must have length 1 or the same length as `name`.")
         
         Nout = len(name)
-        
         output_dir = [Path(d).expand().mkdir_p() for d in output_dir] # make sure they exist 
+
         for i in tqdm(range(len(x.items)), disable=not progress):
             subitems = x.items[max((i-window+1),0):i+1]
+            item_id = x.items[i].id
+
             if center:
+                if window%2 == 0:
+                    raise ValueError("window must be odd if center=True")
                 subitems = x.items[max(i-window//2,0):i+(window-1)//2+1]
 
             subcol = self.__class__(subitems, clone_items=False)
-            raster_file = [d / f"{subitems[-1].id}_{n}.tif" for n, d in zip(name, output_dir)]
+            raster_dir = output_dir
+            if collection_ready:
+                raster_dir = [(d / item_id) for d in output_dir]
+            raster_file = [d / f"{item_id}_{n}.tif" for n, d in zip(name, raster_dir)]
+            
+
             if not overwrite and all([r.exists() for r in raster_file]):
                 logger.debug(f"File already exists, skipping computation: {raster_file}")
                 res = tuple([None]*Nout)
@@ -504,6 +545,8 @@ class ExtendPystacClasses:
                 # compute fun
                 with xr.set_options(keep_attrs=True):
                     res = fun(subcol.to_xarray(bbox=bbox, geometry=geometry), **kwargs)
+                if res is None:
+                    continue
                 if not isinstance(res, tuple):
                     res = (res,)
                 if len(res) != Nout:
@@ -514,6 +557,7 @@ class ExtendPystacClasses:
                     # write result
                     logger.debug("Writing: ", f)
                     r.name = n
+                    f.parent.mkdir_p()
                     write_raster(r, f, overwrite=overwrite, **wa)
                     
             for n, f in zip(name, raster_file):
@@ -777,7 +821,7 @@ def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROP
         for k in pop_props:
             x.properties.pop(k)
 
-def apply_item(x, fun, name, output_dir, overwrite=False,
+def apply_item(x, fun, name, output_dir, collection_ready=False, overwrite=False,
                copy=True, bbox=None, geometry=None, writer_args=None, **kwargs):
     """
     Applies a function to an item in a collection, 
@@ -794,6 +838,9 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
         The name or names of the output raster file(s).
     output_dir : str or list of str
         The directory or directories to save the output raster file(s) to.
+    collection_ready : bool, optional
+        If True, the assets directory will be `output_dir / item.id`, ready for a pystac.Collection.
+        Defaults to `False`.
     overwrite : bool, optional
         Whether to overwrite existing raster files. Defaults to `False`.
     copy : bool, optional
@@ -871,6 +918,10 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
     Nout = len(name)
     output_dir = [Path(d).expand().mkdir_p() for d in output_dir] 
     
+    # add item id level: output_dir / item.id
+    if collection_ready:
+        output_dir = [(d / x.id).mkdir_p() for d in output_dir]
+
     raster_file = [d / f"{x.id}_{n}.tif" for n, d in zip(name, output_dir)]
     if not overwrite and all([r.exists() for r in raster_file]):
         logger.debug(f"File already exists, skipping computation: {raster_file}")
@@ -909,20 +960,34 @@ def apply_item(x, fun, name, output_dir, overwrite=False,
             x.add_asset(key=n, asset=asset)
     return x
 
-def drop_assets_without_proj(item, inplace=False):
+def drop_assets_without_proj(item, pattern="^proj:|^raster:", inplace=False):
     """
-    Drops assets from the given item that do not have the "proj:bbox" field in their extra_fields.
+    Drops assets from the given item that do not have 
+    extra_fields with "proj:" or "raster:" prefix.
 
-    Parameters:
-        item (Item): The item from which to drop assets.
-        inplace (bool, optional): If True, the assets will be dropped in place. Otherwise, a clone of the item will be created and modified.
+    Parameters
+    ----------
+    item: pystac.Item
+      The item from which to drop assets.
+    pattern: str, optional. 
+        The pattern to search for in asset extra_fields keys.
+    inplace: bool, optional
+        If True, the assets will be dropped in place.
+        Otherwise, a clone of the item will be created and modified.
 
-    Returns:
-        Item: The modified item with the dropped assets.
+    Returns
+    ------
+    pystac.Item
+        The modified item with the dropped assets.
     """
     if not inplace:
         item = item.clone()
-    item.assets = {k:v for k,v in item.assets.items() if "proj:bbox" in v.extra_fields}
+    
+    item.assets = {k:v for k,v in item.assets.items() if any([bool(re.search(pattern, p)) for p in v.extra_fields])}
+    
+    if len(item.assets) == 0:
+        logger.warning(f"Item {item.id} has no raster assets.")
+
     return item
 #######################################
 
@@ -984,7 +1049,7 @@ def apply_formula(x, formula):
     x : xarray.DataArray
         It should have a 'band' dimension with the names that will be used by formula.
     formula : str
-        Formula, e.g. "B02>700", "CLM > 0", "SLC in [4,5]", "(B08-B06)/(B08+B06)"
+        Formula, e.g. "B02 > 600", "CLM > 0", "B02 > 600 | ~SLC in [4,5]", "(B08-B06)/(B08+B06)"
 
     Returns
     -------

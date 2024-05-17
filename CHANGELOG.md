@@ -1,3 +1,14 @@
+# v1.1.2
+
+## Add
+- parameter `pattern` to `ItemCollection.drop_non_raster` and `drop_asset_without_proj`
+- support for recursive item search in `build_item_collection`
+- parameter `collection_ready` to `apply_item`, `apply_items`, `apply_rolling`
+
+## Fix
+- fix issue of drop_non_raster with no proj:bbox: now looking for any "proj:" or "raster:" properties.
+  A parameter `pattern` was added to 
+
 # v1.1.1
 
 ## Add
