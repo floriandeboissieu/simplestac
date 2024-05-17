@@ -20,6 +20,32 @@ def test_offset_harmonization(pc_col):
     assert of0 == 0
     assert ofN == -1000
 
+def test_update_scale_offset(pc_col):
+    from simplestac.utils import update_scale_offset
+    col = ItemCollection(pc_col)
+    scale = 1e-4
+    offset = -0.1
+    col1 = update_scale_offset(col, scale, offset)
+    assert col1[0].assets["B02"].extra_fields["raster:bands"][0]["scale"] == 0.0001
+    assert col1[0].assets["B02"].extra_fields["raster:bands"][0]["offset"] == -0.1
+
+    col2 = harmonize_sen2cor_offset(col)
+    col1 = update_scale_offset(col2, scale)
+    assert col1[0].assets["B02"].extra_fields["raster:bands"][0]["scale"] == 0.0001
+    assert col1[0].assets["B02"].extra_fields["raster:bands"][0]["offset"] == 0
+    assert col1[-1].assets["B02"].extra_fields["raster:bands"][0]["scale"] == 0.0001
+    assert col1[-1].assets["B02"].extra_fields["raster:bands"][0]["offset"] == -0.1
+
+    v = col.drop_non_raster().to_xarray().isel(time=-1, x=0, y=0).sel(band="B02").values
+    v1 = col1.drop_non_raster().to_xarray().isel(time=-1, x=0, y=0).sel(band="B02").values
+    assert v*scale+offset == v1
+
+    col1 = update_scale_offset(col2, scale)
+    col2 = harmonize_sen2cor_offset(col)
+    v = col.drop_non_raster().to_xarray().isel(time=-1, x=0, y=0).sel(band="B02").values
+    v1 = col1.drop_non_raster().to_xarray().isel(time=-1, x=0, y=0).sel(band="B02").values
+    assert v*scale+offset == v1
+
 def test_drop_duplicates(pc_col):
     col = ItemCollection(pc_col)
     col1 = ItemCollection(col.clone()+col.clone())

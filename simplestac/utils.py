@@ -989,6 +989,107 @@ def drop_assets_without_proj(item, pattern="^proj:|^raster:", inplace=False):
         logger.warning(f"Item {item.id} has no raster assets.")
 
     return item
+
+def harmonize_sen2cor_offset(x, assets=S2_SEN2COR_BANDS, inplace=False):
+    """
+    Harmonize new Sentinel-2 item collection (Sen2Cor v4+, 2022-01-25)
+    to the old baseline (v3-):
+    adds an offset of -1000 to the asset extra field "raster:bands" of the items
+    with datetime >= 2022-01-25
+
+    Parameters
+    ----------
+    x: ItemCollection
+        An item collection of S2 scenes
+    
+    assets: list
+        A list of assets (i.e. bands) to harmonize
+            
+    inplace: bool
+        Whether to modify the collection in place. Defaults to False.
+        In that case, a cloned collection is returned.
+
+    Returns
+    -------
+    ItemCollection
+        A collection of S2 scenes with extra_fields["raster:bands"]
+        added/updated to each band asset with datetime >= 2022-01-25.
+    
+    Notes
+    -----
+    References:
+    - https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a#Baseline-Change
+    - https://github.com/microsoft/PlanetaryComputer/issues/134
+
+    Warning, if None
+    """
+    offsetv4=-1000
+
+    if not inplace:
+        x = x.clone()
+    for item in x:
+        for k in assets:
+            if k in item.assets:
+                asset = item.assets[k]
+                # add raster:bands if not already there
+                if not "raster:bands" in asset.extra_fields:
+                    asset.extra_fields["raster:bands"] = [dict(offset=0)]
+                # update raster:bands offset for specific dates
+                rb = asset.extra_fields["raster:bands"][0]
+                if item.properties["datetime"] >= "2022-01-25":
+                    scale = rb["scale"] if "scale" in rb else 1.
+                    rb.update(dict(offset=offsetv4*scale))
+    if not inplace:
+        return x
+
+def update_scale_offset(x, scale=None, offset=None, rescale_offset=True, assets=S2_SEN2COR_BANDS, inplace=False):
+    """Updates/add scale and offset to STAC asset extra_fields["raster:bands"].
+
+    When scale and offset are defined, they are used in ItemCollection.to_xarray().
+    In that case, reflectance = scale*asset + offset, with reflectance the xarray value.
+    **Warning**: nothing is changed in the asset file itself, it just impacts the
+    way the ItemCollection is converted to xarray.
+
+    Parameters
+    ----------
+    x : ItemCollection
+        ItemCollection to be modified
+    scale : float, optional
+        The scale to apply to the asset extra_fields["raster:bands"], by default None.
+    offset : float, optional
+        The offset to apply to the asset extra_fields["raster:bands"], by default None.
+    rescale_offset : bool, optional
+        Whether to rescale already existing offset, by default True.
+        If offset is not None, offset is not rescaled.
+    assets : list, optional
+        List of assets to update, by default S2_SEN2COR_BANDS
+    inplace : bool, optional
+        Whether to modify the collection in place, by default False.
+    
+    Returns
+    -------
+    ItemCollection
+        The modified ItemCollection, or None if inplace=True.
+    """
+    if not inplace:
+        x = x.clone()
+    for item in x:
+        for k in assets:
+            if k in item.assets:
+                asset = item.assets[k]
+                if not "raster:bands" in asset.extra_fields:
+                    # add only one element list: considering only one band
+                    asset.extra_fields["raster:bands"] = [dict()]
+                rb = asset.extra_fields["raster:bands"][0]
+                if scale is not None:
+                    rb.update(dict(scale=scale))
+                    if rescale_offset and "offset" in rb:
+                        rb["offset"] = rb["offset"] * scale
+                if offset is not None:
+                    rb.update(dict(offset=offset))
+
+    if not inplace:
+        return x
 #######################################
 
 ################## Some useful xarray functions ################
@@ -1068,49 +1169,6 @@ def apply_formula(x, formula):
 
     return eval(formula)
 
-def harmonize_sen2cor_offset(x, bands=S2_SEN2COR_BANDS, inplace=False):
-    """
-    Harmonize new Sentinel-2 item collection (Sen2Cor v4+, 2022-01-25)
-    to the old baseline (v3-):
-    adds an offset of -1000 to the asset extra field "raster:bands" of the items
-    with datetime >= 2022-01-25
-
-    Parameters
-    ----------
-    x: ItemCollection
-        An item collection of S2 scenes
-    bands: list
-        A list of bands to harmonize
-    
-    inplace: bool
-        Whether to modify the collection in place. Defaults to False.
-        In that case, a cloned collection is returned.
-
-    Returns
-    -------
-    ItemCollection
-        A collection of S2 scenes with extra_fields["raster:bands"]
-        added/updated to each band asset with datetime >= 2022-01-25.
-    
-    Notes
-    -----
-    References:
-    - https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a#Baseline-Change
-    - https://github.com/microsoft/PlanetaryComputer/issues/134
-    """
-    
-    if not inplace:
-        x = x.clone()
-    for item in x:
-        for asset in bands:
-            if asset in item.assets:
-                if item.properties["datetime"] >= "2022-01-25":
-                    item.assets[asset].extra_fields["raster:bands"] = [dict(offset=-1000)]
-                else:
-                    item.assets[asset].extra_fields["raster:bands"] = [dict(offset=0)]
-    if not inplace:
-        return x
-
 def extract_points(x, points, method=None, tolerance=None, drop=False):
     """Extract points from xarray
 
@@ -1175,9 +1233,7 @@ def extract_points(x, points, method=None, tolerance=None, drop=False):
     coords = points[coords_cols]
     points = x.sel(coords.to_xarray(), method=method, tolerance=tolerance, drop=drop)
     return points
-#######################################
 
-################# Some useful functions for xarrays ###############
 def add_reduced_coords(da, da1, dim):
     """Add reduced coords to xarray
 
@@ -1236,3 +1292,4 @@ def add_reduced_coords(da, da1, dim):
             except:
                 pass
     return da1
+################################################################
