@@ -1,3 +1,8 @@
+# v1.1.3
+
+## Add
+ - function `update_scale_offset` to add or update raster scale and offset values to the assets of the collection. These values will then be automatically used to deliver rescaled values when calling to_xarray.
+
 # v1.1.2
 
 ## Add
