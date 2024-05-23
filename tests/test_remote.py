@@ -4,8 +4,6 @@ import pystac_client
 from tempfile import TemporaryDirectory
 import numpy as np
 
-URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
-
 def test_to_xarray(pc_col, roi):
     col = ItemCollection(pc_col)
     x = col.drop_non_raster().to_xarray()
@@ -38,6 +36,7 @@ def test_update_scale_offset(pc_col):
 
     v = col.drop_non_raster().to_xarray().isel(time=-1, x=0, y=0).sel(band="B02").values
     v1 = col1.drop_non_raster().to_xarray().isel(time=-1, x=0, y=0).sel(band="B02").values
+    assert not np.isnan(v)
     assert v*scale+offset == v1
 
     col1 = update_scale_offset(col2, scale)
