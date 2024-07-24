@@ -12,7 +12,9 @@ dependencies:
   - rio-cogeo
   - stackstac
   - tqdm
-  
+  # issue with numpy >= 2.0
+  - numpy<2.0
+
   # dependencies of stac-static and stac-geoparquet
   # otherwise installed pip packages link to wrong stdc++ lib...
   - git
