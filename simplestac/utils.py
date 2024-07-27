@@ -15,6 +15,7 @@ from stac_static.search import to_geodataframe
 import stackstac
 import xarray as xr
 import rioxarray # necessary to activate rio plugin in xarray
+from tempfile import TemporaryDirectory, NamedTemporaryFile
 from tqdm import tqdm
 from typing import Union
 import warnings
@@ -822,7 +823,8 @@ def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROP
             x.properties.pop(k)
 
 def apply_item(x, fun, name, output_dir, collection_ready=False, overwrite=False,
-               copy=True, bbox=None, geometry=None, writer_args=None, **kwargs):
+               copy=True, bbox=None, geometry=None, writer_args=None, 
+               xarray_args=dict(xy_coords="center"), **kwargs):
     """
     Applies a function to an item in a collection, 
     saves the result as a raster file and 
@@ -853,6 +855,8 @@ def apply_item(x, fun, name, output_dir, collection_ready=False, overwrite=False
     writer_args : list of dict, optional
         The encoding to use for the raster file. Defaults to `None`.
         See Notes for an example.
+    xarray_args : dict, optional
+        The arguments to pass to `stackstac.stack`. Defaults to `dict(xy_coords="center")`.
     **kwargs : dict
         Additional keyword arguments to pass to the function.
 
@@ -872,15 +876,15 @@ def apply_item(x, fun, name, output_dir, collection_ready=False, overwrite=False
                 dtype="int16", 
                 scale_factor=0.001,
                 add_offset=0.0,
-                _FillValue= 2**15 - 1,
+                _FillValue=-2**15,
             )
         ),
         dict(
             encoding=dict(
                 dtype="uint16", 
-                scale_factor= 0.001,
-                add_offset= -0.01,
-                _FillValue= 2**15 - 1,
+                scale_factor=0.001,
+                add_offset=-0.01,
+                _FillValue=2**15 - 1,
             )
         ),
     ]
@@ -928,17 +932,11 @@ def apply_item(x, fun, name, output_dir, collection_ready=False, overwrite=False
         res = tuple([None]*Nout)
     else:
         # compute fun
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=UserWarning)
-            arr = stackstac.stack(x, xy_coords="center")
-        if bbox is not None:
-            arr = arr.rio.clip_box(*bbox)
-        if geometry is not None:
-            if hasattr(geometry, 'crs') and geometry.crs != arr.rio.crs: # a shapely geometry
-                logger.debug(f"Reprojecting geometry from {geometry.crs} to {arr.rio.crs}")
-                geometry = geometry.to_crs(arr.rio.crs)
-            arr = arr.rio.clip(geometry)
-        
+        if xarray_args is None:
+            xarray_args = {}
+
+        arr = ItemCollection([x]).to_xarray(bbox=bbox, geometry=geometry, **xarray_args)
+    
         with xr.set_options(keep_attrs=True): 
             res = fun(arr, **kwargs)
 
@@ -953,6 +951,8 @@ def apply_item(x, fun, name, output_dir, collection_ready=False, overwrite=False
             r.name=n
             logger.debug("Writing: ", f)
             write_raster(r, f, overwrite=overwrite, **wa)
+
+    # add assets to item
     for n, f in zip(name, raster_file):
         if f.exists():
             stac_info = stac_asset_info_from_raster(f)
@@ -1140,7 +1140,11 @@ def write_raster(x: xr.DataArray, file, driver="COG", overwrite=False, encoding=
         x = x.astype('uint8')
     if encoding is not None:
         x = x.rio.update_encoding(encoding)
-    x.rio.to_raster(file, driver=driver, **kwargs)
+    with TemporaryDirectory(dir=file.parent) as tmpdir:
+        tmpfile = Path(tmpdir) / Path(file).name
+        res = x.rio.to_raster(tmpfile, driver=driver, **kwargs)
+        tmpfile.move(file)
+    return res
 
 def apply_formula(x, formula):
     """Apply formula to bands
