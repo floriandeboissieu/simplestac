@@ -1,0 +1,29 @@
+{
+    "title": "SimpleSTAC: STAC tools to simplify STAC use.",
+    "publication_date": "2023-09-10",
+    "access_right": "open",
+    "description": "STAC tools to simplify STAC use: local STAC creation, filter and process STAC ItemCollections (local and remote).",
+    "creators": [{"name": "de Boissieu, Florian",
+                  "affiliation": "UMR TETIS, INRAE, CIRAD, CNRS, AgroPariTech, Univ. Montpellier, France",
+                  "orcid": "0000-0002-2185-9952"},
+                  {"name": "Rémi Cresson",
+                  "affiliation": "UMR TETIS, INRAE, CIRAD, CNRS, AgroPariTech, Univ. Montpellier, France",
+                  "orcid": "0000-0003-4017-2635"}],
+    "keywords": [
+        "Remote Sensing",
+        "STAC",
+        "SpatioTemporal Asset Catalog",
+        "Time Series",
+        "Datacube",
+        "Data processing"],
+    "related_identifiers": [
+        {
+            "identifier": "https://forgemia.inra.fr/umr-tetis/stac/simplstac",
+            "relation": "isNewVersionOf",
+            "resource_type": "software",
+            "scheme": "url"
+        }
+    ],
+    "license": "gpl-3.0-or-later",
+    "upload_type": "software"
+}

@@ -1,0 +1,4 @@
+/.zenodo.json export-ignore
+/.gitlab-ci.yml export-ignore
+/.gitignore export-ignore
+__pycache__ export-ignore
