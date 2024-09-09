@@ -1,7 +1,11 @@
 # v1.1.3
 
 ## Add
- - function `update_scale_offset` to add or update raster scale and offset values to the assets of the collection. These values will then be automatically used to deliver rescaled values when calling to_xarray.
+- function `update_scale_offset` to add or update raster scale and offset values to the assets of the collection. These values will then be automatically used to deliver rescaled values when calling to_xarray.
+
+## Fix
+- issue with new version of stac-geoparquet, cf https://github.com/stac-utils/stac-geoparquet/issues/76
+- numpy < 2.0 in environment.yml (issue with numpy >= 2.0)
 
 # v1.1.2
 
