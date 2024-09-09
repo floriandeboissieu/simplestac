@@ -10,6 +10,7 @@ import pystac
 from pystac.item_collection import ItemLike
 import re
 from shapely import from_geojson, to_geojson, intersection
+from stac_geoparquet import __version__ as sg_version
 import stac_static
 from stac_static.search import to_geodataframe
 import stackstac
@@ -17,7 +18,7 @@ import xarray as xr
 import rioxarray # necessary to activate rio plugin in xarray
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from tqdm import tqdm
-from typing import Union
+from typing import Union, Iterable
 import warnings
 import datetime
 import geopandas as gpd
@@ -632,7 +633,10 @@ class ExtendPystacClasses:
         return extract_points(arr, points, method=method, tolerance=tolerance, drop=drop)
 
 class ItemCollection(pystac.ItemCollection, ExtendPystacClasses):
-    pass
+    def __init__(self, items: Iterable[ItemLike], **kwargs):
+        super().__init__(items, **kwargs)
+        if sg_version > "0.3.2":
+            unify_properties(self, inplace=True)
 
 # class Catalog(pystac.Catalog, ExtendPystacClasses):
 #     pass
@@ -821,6 +825,37 @@ def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROP
                     pop_props.append(k)
         for k in pop_props:
             x.properties.pop(k)
+
+def unify_properties(x: ItemCollection, inplace=False):
+    """
+    Remove property fields not shared
+    by all items.
+
+    Some ItemCollections may not have the same item property fields
+    for all items. As it can be an issue for generating a dataframe
+    with stac-geoparquet > 0.3.2,
+    cf [issue #76](https://github.com/stac-utils/stac-geoparquet/issues/76),
+    this function removes property keys not shared by all items.
+    """
+    if not inplace:
+        collection = collection.copy()
+
+    keys = set(x.items[0].properties.keys())
+    udiff = []
+    for item in x.items:
+        keys = keys.intersection(item.properties.keys())
+        
+    for item in x.items:
+        diff = keys.symmetric_difference(item.properties.keys())
+        for k in diff:
+            item.properties.pop(k)
+            udiff.append(k)
+
+    if len(udiff) > 0:
+        print(f"Removed property fields that were not shared to all items:\n{set(udiff)}")
+
+    if not inplace:
+        return collection
 
 def apply_item(x, fun, name, output_dir, collection_ready=False, overwrite=False,
                copy=True, bbox=None, geometry=None, writer_args=None, 

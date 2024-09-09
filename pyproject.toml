@@ -8,8 +8,8 @@ build-backend = "setuptools.build_meta"
 name = "simplestac"
 dynamic = ["version"]
 authors = [
-  {name="Remi Cresson", email="remi.cresson@inrae.fr"},
   {name="Florian de Boissieu", email="florian.deboissieu@inrae.fr"},
+  {name="Remi Cresson", email="remi.cresson@inrae.fr"},
 ]
 description = "STAC tools to simplify STAC use"
 readme = "README.md"
