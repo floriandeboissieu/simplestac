@@ -37,14 +37,13 @@ pages:
     # - version=`python -m setuptools_scm --strip-dev`
     # - echo $version
     # - echo "{\"version\":\"$version\"}" > badges.json
-    - cp -r examples CHANGELOG.md docs/
+    - cp -r examples docs/
     - jupytext --to markdown docs/examples/*.py
     - portray as_html -c pyproject_doc.toml
     - mv site public
   artifacts:
     paths:
       - public
-      - badges.json
   rules:
    - if: $CI_COMMIT_BRANCH == "pages" || $CI_COMMIT_BRANCH == "main"
 
