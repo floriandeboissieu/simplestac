@@ -6,6 +6,7 @@ __[Documentation](https://umr-tetis.pages.mia.inra.fr/stac/simplestac)__
 [![python](https://img.shields.io/badge/Python-3-blue.svg)](https://www.python.org)
 [![build status](https://forgemia.inra.fr/umr-tetis/stac/simplestac/badges/main/pipeline.svg)](https://forgemia.inra.fr/umr-tetis/stac/simplestac/pipelines/main/latest)
 [![version](https://img.shields.io/badge/dynamic/json.svg?label=version&url=https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/jobs/artifacts/main/raw/badges.json?job=pages&query=version&colorB=green)](https://forgemia.inra.fr/umr-tetis/stac/simplestac)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13738413.svg)](https://doi.org/10.5281/zenodo.13738413)
 
 # Features
 

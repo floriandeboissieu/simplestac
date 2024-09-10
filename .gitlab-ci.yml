@@ -22,7 +22,7 @@ tests:
     - pytest -s
   rules:
    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-  #  - if: $CI_COMMIT_BRANCH =~ /.*/
+   - if: $CI_COMMIT_BRANCH =~ /.*/
   
 pages:
   stage: pages
@@ -53,10 +53,10 @@ pages:
 zenodo:
   stage: zenodo
   image: python:3.7
-  # rules:
-  #  - if: $CI_COMMIT_TAG =~ /^v?[0-9]+\.[0-9]+/
+  rules:
+   - if: $CI_COMMIT_TAG =~ /^v?[0-9]+\.[0-9]+/
   variables:
-    VERSION: v1.1.2 # $CI_COMMIT_TAG   
+    VERSION: $CI_COMMIT_TAG   
   script:
     - git fetch --all
     - echo $(git tag)
