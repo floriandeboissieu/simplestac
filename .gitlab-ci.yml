@@ -34,10 +34,10 @@ pages:
     - micromamba activate simplestac
     - micromamba env list
     - pip install -e .
-    - version=`python -m setuptools_scm --strip-dev`
-    - echo $version
-    - echo "{\"version\":\"$version\"}" > badges.json
-    - cp -r examples docs/
+    # - version=`python -m setuptools_scm --strip-dev`
+    # - echo $version
+    # - echo "{\"version\":\"$version\"}" > badges.json
+    - cp -r examples CHANGELOG.md docs/
     - jupytext --to markdown docs/examples/*.py
     - portray as_html -c pyproject_doc.toml
     - mv site public
