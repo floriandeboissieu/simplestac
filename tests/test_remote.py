@@ -4,7 +4,7 @@ import pystac_client
 from tempfile import TemporaryDirectory
 import numpy as np
 
-def test_to_xarray(pc_col, roi):
+def test_to_xarray(pc_col):
     col = ItemCollection(pc_col)
     x = col.drop_non_raster().to_xarray()
     assert len(x.time) == len(col)
@@ -91,6 +91,8 @@ def test_write_assets(pc_col, roi, s2scene_pc_dir):
         assert len(new_col2) == len(new_col)
         assert new_col2[0].bbox == new_col[0].bbox
 
-
+def test_to_geodataframe(pc_col2):
+    col = ItemCollection(pc_col2)
+    col.to_geodataframe()
 
     

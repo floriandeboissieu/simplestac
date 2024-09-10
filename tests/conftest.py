@@ -45,3 +45,22 @@ def pc_col(roi):
     )
     col = search.item_collection()
     yield col
+
+@pytest.fixture(scope="session")
+def pc_col2(roi):
+    """
+    This example is for unconsistent item properties:
+    the property 's2:dark_features_percentage' was removed from
+    N0510 to N0511.
+    """
+    URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
+    time_range = "2024-07-20/2024-08-11"
+    catalog = pystac_client.Client.open(URL, modifier=pc.sign_inplace)
+    search = catalog.search(
+        collections=["sentinel-2-l2a"],
+        bbox=roi.to_crs(4326).total_bounds,
+        datetime=time_range,
+        sortby="datetime",
+    )
+    col = search.item_collection()
+    yield col

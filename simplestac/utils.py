@@ -826,33 +826,61 @@ def update_item_properties(x: pystac.Item, remove_item_props=DEFAULT_REMOVE_PROP
         for k in pop_props:
             x.properties.pop(k)
 
-def unify_properties(x: ItemCollection, inplace=False):
+def unify_properties(x: ItemCollection, method="fill",inplace=False):
     """
-    Remove property fields not shared
+    Fill or Drop property fields not shared
     by all items.
 
     Some ItemCollections may not have the same item property fields
     for all items. As it can be an issue for generating a dataframe
     with stac-geoparquet > 0.3.2,
     cf [issue #76](https://github.com/stac-utils/stac-geoparquet/issues/76),
-    this function removes property keys not shared by all items.
+    this function fills or drops the missing fields depending on the method.
+
+    Parameters
+    ----------
+    x : ItemCollection
+        The ItemCollection to unify properties.
+    method : str
+        Either "fill" or "drop".
+    inplace : bool
+        If True, the collection is modified in place.
+
+    Returns
+    -------
+    ItemCollection if inplace is False, else None.
     """
     if not inplace:
         collection = collection.copy()
 
     keys = set(x.items[0].properties.keys())
     udiff = []
-    for item in x.items:
-        keys = keys.intersection(item.properties.keys())
+    if method == "fill":
+        for item in x.items:
+            keys = keys.union(item.properties.keys())
         
-    for item in x.items:
-        diff = keys.symmetric_difference(item.properties.keys())
-        for k in diff:
-            item.properties.pop(k)
-            udiff.append(k)
-
-    if len(udiff) > 0:
-        print(f"Removed property fields that were not shared to all items:\n{set(udiff)}")
+        for item in x.items:
+            diff = keys.symmetric_difference(item.properties.keys())
+            for k in diff:
+                item.properties[k]=None
+                udiff.append(k)
+        if len(udiff) > 0:
+            print(f"Filled property fields with None when missing in items:\n{set(udiff)}")
+    elif method == "drop":
+        for item in x.items:
+            keys = keys.intersection(item.properties.keys())
+            
+        for item in x.items:
+            diff = keys.symmetric_difference(item.properties.keys())
+            for k in diff:
+                item.properties.pop(k)
+                udiff.append(k)
+        
+        if len(udiff) > 0:
+            print(f"Dropped property fields that were not shared by all items:\n{set(udiff)}")
+    
+    else:
+        raise ValueError(f"Unknown method: {method}")
 
     if not inplace:
         return collection
