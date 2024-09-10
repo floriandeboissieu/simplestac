@@ -26,8 +26,6 @@ tests:
   
 pages:
   stage: pages
-  variables:
-      GIT_STRATEGY: clone
   script:
     - micromamba install -c conda-forge -y conda-merge
     - conda-merge environment.yml environment-doc.yml > /tmp/environment-merge.yml
@@ -58,7 +56,7 @@ zenodo:
   variables:
     VERSION: $CI_COMMIT_TAG   
   script:
-    - git fetch --all
+    # - git fetch --all
     - echo $(git tag)
     - pip install git+https://gitlab.com/sbeniamine/gitlab2zenodo
     - git archive --format zip --worktree-attributes --prefix ${CI_PROJECT_TITLE}-${VERSION}/ --output ${CI_PROJECT_TITLE}-${VERSION}.zip ${VERSION}
