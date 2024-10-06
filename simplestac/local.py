@@ -62,7 +62,7 @@ def get_rio_info(file):
     
     # If needed at some point, we could test MediaType.COG with rio_cogeo.cogeo.cog_validate  
     if media_type == pystac.MediaType.GEOTIFF:
-        iscog, _, _ = cog_validate(file)
+        iscog, _, _ = cog_validate(file, quiet=True)
         if iscog:
             media_type = pystac.MediaType.COG
         

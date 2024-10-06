@@ -1157,7 +1157,7 @@ def update_scale_offset(x, scale=None, offset=None, rescale_offset=True, assets=
 
 ################## Some useful xarray functions ################
 
-def write_raster(x: xr.DataArray, file, driver="COG", overwrite=False, encoding=None, **kwargs):
+def write_raster(x: xr.DataArray, file, driver="GTIFF", compress="DEFLATE", tiled=True, overwrite=False, encoding=None, **kwargs):
     """
     Write a raster file from an xarray DataArray.
 
@@ -1205,7 +1205,9 @@ def write_raster(x: xr.DataArray, file, driver="COG", overwrite=False, encoding=
         x = x.rio.update_encoding(encoding)
     with TemporaryDirectory(dir=file.parent) as tmpdir:
         tmpfile = Path(tmpdir) / Path(file).name
-        res = x.rio.to_raster(tmpfile, driver=driver, **kwargs)
+        res = x.rio.to_raster(tmpfile, driver=driver,
+                              compress=compress, tiled=tiled,
+                              **kwargs)
         tmpfile.move(file)
     return res
 

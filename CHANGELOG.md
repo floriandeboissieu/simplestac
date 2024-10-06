@@ -1,3 +1,10 @@
+# v1.2.0
+## Change
+- changed default write_raster args from driver="COG" to {driver="GTIFF", compress="DEFLATE", tiled=True},
+  as COG has no benefit for local use (overviews takes processing time and disk space).
+  --> increases writing speed by x2-3 as overviews do not have to be computed
+- made teh COG validation quiet at asset creation
+
 # v1.1.3
 
 ## Add
