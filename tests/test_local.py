@@ -1,4 +1,5 @@
 from simplestac.local import collection_format, build_item_collection
+from simplestac.local import stac_asset_info_from_raster
 from simplestac.utils import write_raster, apply_formula
 import xarray as xr
 import pystac
@@ -43,6 +44,24 @@ def test_datetime(s2scene_dir):
     col = build_item_collection(s2scene_dir, fmt)
     assert len(col) == len(s2scene_dir.dirs())
 
+def test_xarray_to_stac(s2scene_dir):
+    # test for preparation of a function xarray_to_stac or xarray_to_items or a method ItemCollection.add_xarray
+    col = build_item_collection(s2scene_dir, collection_format())
+    x = col.drop_non_raster().to_xarray()
+    y = apply_formula(x, formula="((B08-B04)/(B08+B04))")
+    output_dir = s2scene_dir.parent / "NDVI"
+    gdf = col.to_geodataframe(include_items=True)
+    y = y.set_xindex("id")
+    for id in y.id.values:
+        item = gdf.loc[gdf.id==id].item.iloc[0]
+        raster_file = output_dir / f"{id}_NDVI.tif"
+        write_raster(y.sel(id=id), raster_file)
+        stac_info = stac_asset_info_from_raster(raster_file)
+        asset = pystac.Asset.from_dict(stac_info)    
+        item.add_asset(key="NDVI", asset=asset)
+    
+    assert "NDVI" in col.items[-1].assets
+
 def test_apply_items(s2scene_dir, roi):
     col = build_item_collection(s2scene_dir, collection_format())
     output_dir = s2scene_dir.parent / "NDVI"
@@ -72,7 +91,6 @@ def test_apply_items(s2scene_dir, roi):
         inplace=True)
     assert "NDVI" in col.items[-1].assets
     assert len(output_dir.dirs()) == len(col)
-
 
 
 def test_apply_rolling(s2scene_dir):
