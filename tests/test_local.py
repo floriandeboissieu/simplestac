@@ -48,7 +48,8 @@ def test_xarray_to_stac(s2scene_dir):
     # test for preparation of a function xarray_to_stac or xarray_to_items or a method ItemCollection.add_xarray
     col = build_item_collection(s2scene_dir, collection_format())
     x = col.drop_non_raster().to_xarray()
-    y = apply_formula(x, formula="((B08-B04)/(B08+B04))")
+    with xr.set_options(keep_attrs=True):
+        y = apply_formula(x, formula="((B08-B04)/(B08+B04))")
     output_dir = s2scene_dir.parent / "NDVI"
     output_dir.rmtree_p().mkdir_p()
     gdf = col.to_geodataframe(include_items=True)
