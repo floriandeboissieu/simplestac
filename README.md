@@ -11,7 +11,7 @@ __[Documentation](https://umr-tetis.pages.mia.inra.fr/stac/simplestac)__
 STAC, i.e. Spatio-Temporal Asset Catalog, is a standard especially useful to present a spatio-temporal catalog of raster files,
 typically time series of satellite data:
 - when making a request to a remote STAC server, an ItemCollection is returned, i.e. a list of items. 
-  This ItemCollection can typically be saved to json file, an efficient way to keep track of all the rasters used in a processing.
+  This ItemCollection can be saved to a json file, e.g. to keep track of all the rasters used in a processing.
 - if raster files are formated with Cloud Optimized GeoTIFF, it allows a fast extraction of sparse pixels
   (e.g. polygons or points) from a large remote time series.
 
@@ -48,15 +48,13 @@ __Additional functions:__
 - write an ItemCollection to a series of local files, see `write_assets`
 
 
-# Getting started
+# Install
 
-## Recommendations
-
-Install the package in a virtual environment. See
+We recommend installing the package in a virtual environment. See
 [miniforge](https://github.com/conda-forge/miniforge) for conda/mamba, or 
 [venv](https://docs.python.org/3/library/venv.html) for virtualenv.
 
-## Install
+
 Create a conda env:
 ```shell
 mamba env create -n simplestac --file https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/raw/main/environment.yml
@@ -72,9 +70,10 @@ Update `simplestac` within an env (conda or virtualenv):
 pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac
 ```
 
-## Known issues
+__Known issues:__
 
-On Windows, the installation of `simplestac` may end with an error due to `Filename too long` in `stac-static`, a dependency of `simplestac`. Git can be configured to manage such filenames:
+The installation of `simplestac` on Windows may end up with an error due to `Filename too long` at `stac-static` installation,
+a dependency of `simplestac`. Git can be configured to manage such filenames:
 ```shell
 git config --system core.longpaths true
 ```

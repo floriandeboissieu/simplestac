@@ -6,7 +6,7 @@
 [tool.portray]
 modules = ["simplestac.local", "simplestac.utils", "simplestac.extents"]
 # extra_markdown_extensions = ['mdx_breakless_lists']
-extra_markdown_extensions = ['pymdownx.superfences']
+extra_markdown_extensions = ['pymdownx.superfences', 'mdx_breakless_lists']
 
 [[tool.portray.extra_markdown_extensions]]
     [tool.portray.extra_markdown_extensions.mdx_math]
