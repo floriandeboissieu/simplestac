@@ -1,35 +1,54 @@
 # SimpleSTAC : STAC tools to simplify STAC use.
 
-__[Documentation](https://umr-tetis.pages.mia.inra.fr/stac/simplestac)__
-
 [![version](https://img.shields.io/gitlab/v/tag/10090?gitlab_url=https%3A%2F%2Fforgemia.inra.fr&label=version&color=green)](https://forgemia.inra.fr/umr-tetis/stac/simplestac)
 [![licence](https://img.shields.io/badge/Licence-GPL--3-blue.svg)](https://www.r-project.org/Licenses/GPL-3)
 [![python](https://img.shields.io/badge/Python-3-blue.svg)](https://www.python.org)
 [![build status](https://forgemia.inra.fr/umr-tetis/stac/simplestac/badges/main/pipeline.svg)](https://forgemia.inra.fr/umr-tetis/stac/simplestac/pipelines/main/latest)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13738413.svg)](https://doi.org/10.5281/zenodo.13738413)
 
+__[Documentation](https://umr-tetis.pages.mia.inra.fr/stac/simplestac)__
+
+STAC, i.e. Spatio-Temporal Asset Catalog, is a standard especially useful to present a spatio-temporal catalog of raster files,
+typically time series of satellite data:
+- when making a request to a remote STAC server, an ItemCollection is returned, i.e. a list of items. 
+  This ItemCollection can typically be saved to json file, an efficient way to keep track of all the rasters used in a processing.
+- if raster files are formated with Cloud Optimized GeoTIFF, it allows a fast extraction of sparse pixels
+  (e.g. polygons or points) from a large remote time series.
+
+This package aims at simplifying the way to process such an ItemCollection,
+mixing remote and local files for example, 
+and to build your own ItemCollection of your local raster files.
+
+This way the same processing line can be easily scaled up from a small experiment on local files
+to a production context at larger scale, preparing the results for publication in a new STAC collection.
+
 # Features
 
-__Build a STAC ItemCollection based on local raster data:__
+__Build a STAC ItemCollection based on local raster files:__
 
-- functions to get the minimal raster metadata (bbox, geometry, projection) in STAC format
-- class `MyStacItem` to create a simple STAC item with raster files
+- convert a series of raster files to STAC assets
+- create a STAC item from raster directory, e.g. Sentinel-2 scene, see class `MyStacItem` 
 - function `build_item_collection` to build your small `ItemCollection` with a template for further metadata
   
-__Extends class `pystac.ItemCollection` with methods to simplify data manipulation:__
+__Extends class `pystac.ItemCollection` with methods to simplify its manipulation:__
 
-- sort collection items
-- filter (subset) cube by spatio-temporal coordinates and assets
-- convert to a lazy dask `DataArray` cube
-- convert to a geodataframe
-- apply a function to each item or on a rolling window, write and add the created assets to current collection.
+- convert ItemCollection to a geodataframe with image footprint geometry
+- convert ItemCollection to a lazy dask `DataArray` cube
+- fast extract sparse points of the ItemCollection (e.g. 90s for 700 points full S2 time series with all bands)
+- subset ItemCollection a-posteriori, e.g. filter according to STAC attributes, crop according to geometry
+- apply a function to each item of the collection, saving new assets to files and adding them to the processed ItemCollection
+- sort ItemCollection
+- harmonize items scale and offset (e.g. for different Sentinel-2 processing baselines)
+- drop non raster assets
+
 
 __Additional functions:__
 
-- apply formula to a `DataArray` cube (e.g. "(B08-B04)/(B08+B04)")
-- write collection assets to local files
+- apply a band formula to a `DataArray` cube (e.g. "(B08-B04)/(B08+B04)")
+- write an ItemCollection to a series of local files, see `write_assets`
 
-# Get started
+
+# Getting started
 
 ## Recommendations
 
@@ -48,20 +67,9 @@ Within a virtualenv:
 pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac
 ```
 
-## Update
 Update `simplestac` within an env (conda or virtualenv):
 ```shell
 pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac
-```
-
-## Notebooks
-Example notebooks make use of optional packages such as `ipykernel` or `xpystac`
-which can be installed with:
-```shell
-# in conda env
-mamba env update -n simplestac --file https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/raw/main/environment-notebook.yml
-# or in venv
-pip install git+https://forgemia.inra.fr/umr-tetis/stac/simplestac.git#egg=simplestac[notebook]
 ```
 
 ## Known issues
@@ -73,22 +81,89 @@ git config --system core.longpaths true
 
 # Examples
 
-See [example scripts](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples) for a detailed demo of `simpleSTAC` features.
-
 Below is a small teaser.
 
-## Example data
+See [example scripts](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples) for a detailed demo of `simpleSTAC` features.
+
 Example data can be downloaded [here](https://gitlab.com/fordead/fordead_data/-/archive/main/fordead_data-main.zip) or with the script [download_data.py](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples/download_data.py?ref_type=heads)
 
+## Extract a study area from a remote collection
+
+In this example:
+1. a region of interest is extracted from
+the Planetary Computer Sentinel-2 L2A collection,
+1. extraction is written down to a local files
+1. a STAC ItemCollection is returned and saved
+
+```python
+import geopandas as gpd 
+from path import Path
+import pystac_client
+import planetary_computer as pc
+from simplestac.utils import ItemCollection, apply_formula, drop_assets_without_proj
+
+data_dir = Path(__file__).parent/"data"
+roi_file = data_dir / "roi.geojson"
+
+# load region of interest
+roi = gpd.read_file(roi_file)
+
+URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
+res_dir = (data_dir / "pc_stac").mkdir_p()
+
+# time range
+time_range = "2016-01-01/2020-01-01"
+
+# file where the collection will be saved
+col_path = res_dir / "collection.json"
+
+# Load the S2 L2A collection limiting cloud cover to 50%
+catalog = pystac_client.Client.open(URL)
+search = catalog.search(
+    collections=["sentinel-2-l2a"],
+    bbox=roi.to_crs(4326).total_bounds,
+    datetime=time_range,
+    query={"eo:cloud_cover": {"lt": 50}},
+)
+
+# Make the search result an exetended ItemCollection, i.e. with exetended methods
+col = ItemCollection(search.item_collection(), clone_items=False)
+# Drop non raster assets
+col.drop_non_raster(inplace=True)
+
+# write down cropped item collection
+col = write_assets(col, output_dir=res_dir/"sentinel-2-l2a", geometry=roi)
+```
 
 ## Create a local STAC ItemCollection
 
-In this example, local files (see previous section) are parsed to build
-a STAC ItemCollection.
+In this example, a series of Sentinel-2 L2A scenes stored locally are parsed to build
+a local STAC ItemCollection.
 
+The file tree looks like that (pruned to keep it readable):
+```shell
+s2_scenes
+├── SENTINEL2A_20170526-105518-082_L2A_T31UFQ_D_V1-4
+├── SENTINEL2A_20171202-105415-464_L2A_T31UFQ_C_V2-2
+├── SENTINEL2A_20190725-105725-224_L2A_T31UFQ_C_V2-2
+├── SENTINEL2B_20170707-104022-457_L2A_T31UFQ_C_V2-2
+└── SENTINEL2B_20170806-104021-455_L2A_T31UFQ_C_V2-2
+    ├── MASKS
+    ├── SENTINEL2B_20170806-104021-455_L2A_T31UFQ_C_V2-2_FRE_B11.tif
+    ├── SENTINEL2B_20170806-104021-455_L2A_T31UFQ_C_V2-2_FRE_B12.tif
+    ├── SENTINEL2B_20170806-104021-455_L2A_T31UFQ_C_V2-2_FRE_B2.tif
+    ├── SENTINEL2B_20170806-104021-455_L2A_T31UFQ_C_V2-2_FRE_B3.tif
+    ├── SENTINEL2B_20170806-104021-455_L2A_T31UFQ_C_V2-2_FRE_B4.tif
+    ├── SENTINEL2B_20170806-104021-455_L2A_T31UFQ_C_V2-2_FRE_B5.tif
+    ├── SENTINEL2B_20170806-104021-455_L2A_T31UFQ_C_V2-2_FRE_B6.tif
+    ├── SENTINEL2B_20170806-104021-455_L2A_T31UFQ_C_V2-2_FRE_B7.tif
+    ├── SENTINEL2B_20170806-104021-455_L2A_T31UFQ_C_V2-2_FRE_B8A.tif
+    └── SENTINEL2B_20170806-104021-455_L2A_T31UFQ_C_V2-2_FRE_B8.tif
+```
+
+The STAC ItemCollection can be build and saved to a json file with:
 ```python
 from path import Path
-from simplestac.utils import ItemCollection
 from simplestac.local import collection_format, build_item_collection
 
 image_dir = data_dir / "s2_scenes"
@@ -104,34 +179,20 @@ col = build_item_collection(image_dir, fmt)
 col.save_object(col_file)
 ```
 
-Anyone can make his own format depending on the naming of the file names.
-The parsing is based on regex patterns.
-
-The expected minimal structure is a json with the following:
-
-- item: metadata that are item-wise (i.e. independent of the asset)
-  - pattern: how to parse the item id from the item directory
-  - datetime: relative to datetime parsing (pattern, format)
-- item_assets: the metadata relative to each asset
-  - _asset key_:
-    - pattern: regex pattern to find the band among the recursive list of files
-
-See a simple [Theia format](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/simplestac/formats/S2_L2A_THEIA.json?ref_type=heads) made for the example.
-
-## Extended pystac.ItemCollection
+## Process the ItemCollection
 
 After executing previous code, the following:
 
-1. converts the created ItemCollection into a geodataframe and plots its bouding box over the geometry of a region of interest,
+1. plot a region of interest over a the ItemCollection footprint,
 1. computes NDVI over a collection subset and plots it.
 
 The same could be done with a remote item collection, see [examples](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples).
 
 ```python
 import geopandas as gpd
-from simplestac.utils import apply_formula
-# Load the item collection
-ItemCollection.from_file(col_file)
+from simplestac.utils import ItemCollection, apply_formula
+# Load previously saved item collection
+col = ItemCollection.from_file(col_file)
 
 # Load the region of interest
 roi = gpd.read_file(data_dir / "roi.geojson")

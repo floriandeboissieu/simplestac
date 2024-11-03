@@ -31,7 +31,7 @@ roi = gpd.read_file(roi_file)
 # limiting the scene cloud cover to 50%.
 # - creates an ItemCollection
 # - plots the collection geometry and the area of interest
-# - saves the collection for furture
+# - saves the collection for future processing
 # %%
 URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
 res_dir = (data_dir / "pc_stac").mkdir_p()
