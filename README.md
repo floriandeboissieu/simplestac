@@ -83,7 +83,7 @@ git config --system core.longpaths true
 
 Below is a small teaser.
 
-See [example scripts](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples) for a detailed demo of `simpleSTAC` features.
+For a detailed demo of `simpleSTAC` features, see [example scripts](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples).
 
 Example data can be downloaded [here](https://gitlab.com/fordead/fordead_data/-/archive/main/fordead_data-main.zip) or with the script [download_data.py](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples/download_data.py?ref_type=heads)
 

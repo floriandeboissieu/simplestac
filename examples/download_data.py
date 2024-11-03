@@ -1,10 +1,11 @@
 # %% [md]
 # # Download data
-# [Source code](https://forgemia.inra.fr/umr-tetis/stac/simplestac/examples/download_data.py)
+# [Source code](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples/download_data.py)
 #
 # This script aims at downloading the data necessary for the example.
 # 
 # The notebooks data are:
+# 
 # - a time series of Sentinel 2 data clip
 # over a small region of interest (172MB)
 # - a vector file of the region of interest (~100kB)
@@ -13,6 +14,7 @@
 # The downloaded data is 
 # The destination folder is the one from which the script is executed,
 # in which you should find:
+# 
 # - data / s2_scenes
 # - data / roi.geojson
 

@@ -1,6 +1,6 @@
 # %% [md]
 # # Local STAC
-# [Source code](https://forgemia.inra.fr/umr-tetis/stac/simplestac/examples/local_stac.py)
+# [Source code](https://forgemia.inra.fr/umr-tetis/stac/simplestac/-/blob/main/examples/local_stac.py)
 # 
 # This notebook shows how to build a STAC ItemCollection from local data.
 # %% [md]
