@@ -4,6 +4,7 @@
   as COG has no benefit for local use (overviews takes processing time and disk space).
   --> increases writing speed by x2-3 as overviews do not have to be computed
 - made the COG validation quiet at asset creation
+- xarray.Dataset support for apply_formula
 
 ## Fix
 - CRS issue in ItemCollection.to_xarray
