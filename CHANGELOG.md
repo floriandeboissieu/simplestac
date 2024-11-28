@@ -5,6 +5,9 @@
   --> increases writing speed by x2-3 as overviews do not have to be computed
 - made the COG validation quiet at asset creation
 
+## Fix
+- CRS issue in ItemCollection.to_xarray
+
 # v1.1.3
 
 ## Add
