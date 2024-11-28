@@ -152,7 +152,8 @@ class ExtendPystacClasses:
                     raise ValueError(str(e)+"\nOr drop non-raster assets from collection with ItemCollection.drop_non_raster()")
                 else:
                     raise e
-
+        # it seems that crs is not written correctly by stackstac
+        arr = arr.rio.write_crs(arr.rio.crs)
         if bbox is not None:
             arr = arr.rio.clip_box(*bbox)
         if geometry is not None:
@@ -1228,13 +1229,19 @@ def apply_formula(x, formula):
     """
     # formula = "B02 + B03"
     # formula = "CLM in [4,5]"
-    bnames = x.band.values.tolist()
-    
-    for bname in bnames:
-        formula = re.sub(f"{bname}", f"x.sel(band='{bname}')", formula)
-    
+    if isinstance(x, xr.DataArray):
+        bnames = x.band.values.tolist()
+        
+        for bname in bnames:
+            formula = re.sub(f"{bname}", f"x.sel(band='{bname}')", formula)
+    if isinstance(x, xr.Dataset):
+        bnames = list(x)
+        for bname in bnames:
+            formula = re.sub(f"{bname}", f"x['{bname}']", formula)
+
     # replace 'in [...]' by '.isin([...])'
     formula = re.sub(r"\s*in\s*(\[.*\])", ".isin(\\1)", formula)
+    
 
     return eval(formula)
 
