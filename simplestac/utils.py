@@ -1158,7 +1158,9 @@ def update_scale_offset(x, scale=None, offset=None, rescale_offset=True, assets=
 
 ################## Some useful xarray functions ################
 
-def write_raster(x: xr.DataArray, file, driver="GTIFF", compress="DEFLATE", tiled=True, overwrite=False, encoding=None, **kwargs):
+def write_raster(
+        x: xr.DataArray, file: str, driver="GTIFF", compress="DEFLATE",
+        tiled=True, overwrite=False, encoding=None, compute=True, **kwargs):
     """
     Write a raster file from an xarray DataArray.
 
@@ -1175,12 +1177,16 @@ def write_raster(x: xr.DataArray, file, driver="GTIFF", compress="DEFLATE", tile
         If False, a logger.debug message is printed if the file already exists.
     encoding : dict, optional
         The encoding to use for the raster file. Defaults to None, i.e. float with np.nan as nodata.
+    compute : bool, optional
+        If True and data is a dask array, then compute and save the data immediately.
+        If False, return a dask Delayed object. Default is True.
+        See rioxarray docs for details.
     **kwargs
         Additional keyword arguments to be passed to the xarray rio.to_raster() function.
 
     Returns
     -------
-    None
+    None or dask.Delayed
 
     Notes
     -----
@@ -1200,16 +1206,22 @@ def write_raster(x: xr.DataArray, file, driver="GTIFF", compress="DEFLATE", tile
     if Path(file).exists() and not overwrite:
         logger.debug(f"File already exists, skipped: {file}")
         return
+    
     if x.dtype == 'bool':
         x = x.astype('uint8')
     if encoding is not None:
         x = x.rio.update_encoding(encoding)
-    with TemporaryDirectory(dir=file.parent) as tmpdir:
-        tmpfile = Path(tmpdir) / Path(file).name
-        res = x.rio.to_raster(tmpfile, driver=driver,
-                              compress=compress, tiled=tiled,
-                              **kwargs)
-        tmpfile.move(file)
+    if compute:
+        with TemporaryDirectory(dir=file.parent) as tmpdir:
+            tmpfile = Path(tmpdir) / Path(file).name
+            res = x.rio.to_raster(tmpfile, driver=driver,
+                                compress=compress, tiled=tiled,
+                                **kwargs)
+            tmpfile.move(file)
+    else:
+        res = x.rio.to_raster(file, driver=driver,
+                            compress=compress, tiled=tiled,
+                            compute=False, **kwargs)
     return res
 
 def apply_formula(x, formula):
@@ -1234,10 +1246,12 @@ def apply_formula(x, formula):
         
         for bname in bnames:
             formula = re.sub(f"{bname}", f"x.sel(band='{bname}')", formula)
-    if isinstance(x, xr.Dataset):
+    elif isinstance(x, xr.Dataset):
         bnames = list(x)
         for bname in bnames:
             formula = re.sub(f"{bname}", f"x['{bname}']", formula)
+    else:
+        raise TypeError("x should be xarray.DataArray or xarray.Dataset")
 
     # replace 'in [...]' by '.isin([...])'
     formula = re.sub(r"\s*in\s*(\[.*\])", ".isin(\\1)", formula)
