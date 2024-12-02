@@ -1,11 +1,14 @@
+# v1.2.1
+## add
+- add xarray.Dataset support to apply_formula
+- make write_raster ready for delayed write
+
 # v1.2.0
 ## Change
 - changed default write_raster args from driver="COG" to {driver="GTIFF", compress="DEFLATE", tiled=True},
   as COG has no benefit for local use (overviews takes processing time and disk space).
   --> increases writing speed by x2-3 as overviews do not have to be computed
 - made the COG validation quiet at asset creation
-- add xarray.Dataset support to apply_formula
-- make write_raster ready for delayed write
 
 ## Fix
 - CRS issue in ItemCollection.to_xarray
