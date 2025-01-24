@@ -81,17 +81,8 @@ class ExtendPystacClasses:
         object
             If `inplace` is False, a cloned collection is returned.       
         """
-        if inplace:
-            x = self
-        else:
-            x = self.clone()
+        return self.filter_assets(pattern=pattern, inplace=inplace)
         
-        for item in x.items: 
-            drop_assets_without_proj(item, pattern=pattern, inplace=True)
-
-        if not inplace:
-            return x
-
     def to_xarray(self, xy_coords="center", bbox=None, geometry=None, gdal_env=DEFAULT_GDAL_ENV, **kwargs):
         """Returns a DASK xarray()
         
@@ -165,6 +156,18 @@ class ExtendPystacClasses:
             arr = arr.rio.clip(geometry)
         return arr
     
+    def filter_assets(self, assets=None, pattern=None, drop=False, inplace=False):
+        if inplace:
+            x = self
+        else:
+            x = self.clone()
+        
+        for item in x.items: 
+            filter_assets(item, assets=assets, pattern=pattern, drop=drop, inplace=True)
+
+        if not inplace:
+            return x
+
     def filter(self, assets=None, with_assets=None, clone_items=True, **kwargs):
         """Filter items with stac-static search.
         Additional args:
@@ -1053,6 +1056,62 @@ def drop_assets_without_proj(item, pattern="^proj:|^raster:", inplace=False):
         logger.warning(f"Item {item.id} has no raster assets.")
 
     return item
+
+def filter_assets(
+        item: pystac.Item,
+        assets: Union[str, list]=None,
+        pattern: str="^proj:|^raster:",
+        drop: bool=False,
+        inplace: bool=False):
+    """
+    Filter assets from the given item according to pattern and asset keys.
+
+    Parameters
+    ----------
+    item: pystac.Item
+      The item from which to filter assets.
+    assets: Union[str, list], optional
+        The asset keys to match.
+    pattern: str, optional. 
+        The pattern to search for in asset extra_fields keys.
+    drop: bool, optional
+        If True, the assets matching the pattern and the asset keys
+        are dropped.
+    inplace: bool, optional
+        If True, the assets will be filtered in place.
+        Otherwise, a clone of the item will be created and modified.
+
+    Returns
+    ------
+    pystac.Item
+        The modified item.
+    """
+    if not inplace:
+        item = item.clone()
+    
+    if not pattern:
+        keep = item.assets.keys()
+    else:
+        keep = []
+        for k,v in item.assets.items():
+            if any([bool(re.search(pattern, p)) for p in v.extra_fields]):
+                keep.append(k)
+    
+    if assets is not None:
+        if not isinstance(assets, list):
+            assets = [assets]
+        keep = [k for k in keep if k in assets]
+
+    if drop:
+        item.assets = {k:v for k,v in item.assets.items() if k not in keep}
+    else:
+        item.assets = {k:v for k,v in item.assets.items() if k in keep}
+
+    if len(item.assets) == 0:
+        logger.warning(f"Item {item.id} has no assets left after filtering.")
+
+    return item
+
 
 def harmonize_sen2cor_offset(x, assets=S2_SEN2COR_BANDS, inplace=False):
     """
