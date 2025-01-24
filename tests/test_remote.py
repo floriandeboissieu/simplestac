@@ -4,6 +4,16 @@ import pystac_client
 from tempfile import TemporaryDirectory
 import numpy as np
 
+
+def test_filter_assets(pc_col):
+    col = ItemCollection(pc_col)
+    col1 = col.filter_assets(assets=["B02", "B03"])
+    assert len(col1[0].assets) == 2
+    col1 = col.filter_assets(assets=["B02"], drop=True)
+    assert "B02" not in col1[0].assets
+    col1 = col.filter_assets(pattern="^proj:bbox", drop=False)
+    assert all(["proj:bbox" in a.extra_fields for a in col1[0].assets.values()])
+
 def test_to_xarray(pc_col):
     col = ItemCollection(pc_col)
     x = col.drop_non_raster().to_xarray()
