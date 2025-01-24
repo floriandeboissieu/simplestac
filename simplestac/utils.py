@@ -17,6 +17,7 @@ import stackstac
 import xarray as xr
 import rioxarray # necessary to activate rio plugin in xarray
 from tempfile import TemporaryDirectory, NamedTemporaryFile
+import time
 from tqdm import tqdm
 from typing import Union, Iterable
 import warnings
@@ -654,7 +655,7 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
                  output_dir: str,
                  bbox=None,
                  geometry=None,
-                 update=True,
+                 keep_asset_attrs=True,
                  xy_coords='center', 
                  remove_item_props=DEFAULT_REMOVE_PROPS,
                  overwrite=False,
@@ -759,33 +760,52 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
                 wa = writer_args[b]
             else:
                 wa = kwargs
-            
             try:
                 if file.exists() and not overwrite:
-                    logger.debug(f"File already exists, skipping asset: {file}")
+                    logger.info(f"File already exists, skipping asset: {file}")
                 else:
-                    write_raster(arr.sel(band=b), file, **wa)
-                
+                    done = False
+                    max_retry = 10
+                    retry = 0
+                    wait = 2
+                    while not done and retry != max_retry:
+                        try:
+                            write_raster(arr.sel(band=b), file, **wa)
+                            done=True
+                        except RuntimeError as e:
+                            logger.info(e)
+                            if 'HTTP response code: 403' in str(e):
+                                retry += 1
+                                logger.info(
+                                    f"Failed to read the asset '{b}' of item '{item.id}', "
+                                    f"retrying in {wait*retry} minutes ({retry}/{max_retry}).")
+                                time.sleep(wait*60)
+                            else:
+                                raise e
+
+                    if not file.exists():
+                        raise Exception(f"File was not written: {file}")
+                    
                 # update stac asset info            
                 stac_info = stac_asset_info_from_raster(file)
-                if update:
+                if keep_asset_attrs:
                     asset_info = item.assets[b].to_dict()
                     asset_info.update(stac_info)
                     stac_info = asset_info
                 asset = pystac.Asset.from_dict(stac_info)
                 item.add_asset(key=b, asset=asset)
             except RuntimeError as e:
-                logger.debug(e)
-                logger.debug(f'Skipping asset "{b}" for "{item.id}".')
+                logger.info(e)
+                logger.info(f"There was an error writing the asset '{b}' of item '{item.id}', skipping it.")
                 file.remove_p()
                 item.assets.pop(b, None)
-        try:
-            update_item_properties(item, remove_item_props=remove_item_props)
-            items.append(item)
-        except RuntimeError as e:
-            logger.debug(e)
-            logger.info(f'Item "{item.id}" is empty, skipping it.')
-            item_dir.rmtree_p()
+        # try:
+        update_item_properties(item, remove_item_props=remove_item_props)
+        items.append(item)
+        # except RuntimeError as e:
+        #     logger.info(e)
+        #     logger.info(f'Item "{item.id}" is empty, skipping it.')
+        #     item_dir.rmtree_p()
     
     if not inplace:
         return x

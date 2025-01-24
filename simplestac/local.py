@@ -381,20 +381,26 @@ def properties_from_assets(assets, update_assets=True):
         Bounding box in WGS84, WGS84 geometry in GeoJSON, and properties.
     """
     properties = {}
-    assets = [(k, v) for k, v in assets.items()]
-    df_assets = DataFrame(assets, columns=["key", "asset"])
-    epsg_list = df_assets["asset"].apply(lambda x: x.extra_fields["proj:epsg"])
-    bbox_list = df_assets["asset"].apply(lambda x: box(*x.extra_fields["proj:bbox"]))
-    if len(epsg_list.unique()) == 1:
+    epsg_list = []
+    bbox_list = []
+    for k, v in assets.items():
+        if "proj:epsg" in v.extra_fields and "proj:bbox" in v.extra_fields:
+            epsg = v.extra_fields["proj:epsg"]
+            bbox = gpd.GeoSeries(box(*v.extra_fields["proj:bbox"]), crs=epsg).to_crs(4326)
+            epsg_list.append(epsg)
+            bbox_list.append(bbox)
+    
+    if len(set(epsg_list)) == 1 and epsg_list[0] is not None:
         properties.update({
             "proj:epsg" : int(epsg_list[0])
         })
-
         if update_assets:
-        # remove epsg from extra_fields
-            df_assets["asset"].apply(lambda x: x.extra_fields.pop("proj:epsg"))
+            # remove epsg from extra_fields
+            for k, v in assets.items():
+                if "proj:epsg" in v.extra_fields:
+                    v.extra_fields.pop("proj:epsg")
 
-    g = unary_union([gpd.GeoSeries(bbox, crs=epsg).to_crs(4326).geometry for bbox, epsg in zip(bbox_list, epsg_list)])
+    g = unary_union(bbox_list)
     bbox_wgs = list(g.bounds)
     geometry = json.loads(to_geojson(g))
     return bbox_wgs, geometry, properties
