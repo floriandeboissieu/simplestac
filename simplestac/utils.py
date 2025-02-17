@@ -799,13 +799,9 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
                 logger.info(f"There was an error writing the asset '{b}' of item '{item.id}', skipping it.")
                 file.remove_p()
                 item.assets.pop(b, None)
-        # try:
+        
         update_item_properties(item, remove_item_props=remove_item_props)
         items.append(item)
-        # except RuntimeError as e:
-        #     logger.info(e)
-        #     logger.info(f'Item "{item.id}" is empty, skipping it.')
-        #     item_dir.rmtree_p()
     
     if not inplace:
         return x

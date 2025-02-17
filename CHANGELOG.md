@@ -1,5 +1,12 @@
+# v1.2.2
+## Add
+- `ItemCollection.filter_assets`: filter assets (keep or drop)
+
+## Fix
+- log as info if writing had an error (issue #2)
+
 # v1.2.1
-## add
+## Add
 - add xarray.Dataset support to apply_formula
 - make write_raster ready for delayed write
 
