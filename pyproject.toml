@@ -22,7 +22,7 @@ classifiers = [
 dependencies = [
   "tqdm",
   "path",
-  "pystac",
+  "pystac < 1.12",
   "rioxarray",
   "stac_static@git+https://github.com/jsignell/stac-static",
   "stackstac",
