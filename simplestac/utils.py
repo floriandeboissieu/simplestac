@@ -65,6 +65,36 @@ S2_SEN2COR_BANDS = [f"B{i+1:02}" for i in range(12)]+["B8A"]
 class ExtendPystacClasses:
     """Add capacities to_xarray and filter to pystac Catalog, Collection, ItemCollection"""
 
+    def projv2_to_projv12(self, inplace=False):
+        """
+        Converts extension projection v2 to projection v1.2, i.e.
+        it adds back "proj:epsg" to the asset extra_fields when only "proj:code"
+        is present.
+
+        This is necessary while stackstac [issue #262](https://github.com/gjoseph92/stackstac/issues/262)
+        is not solved.
+
+        Parameters
+        ----------
+        inplace : bool
+            Whether to modify the collection in place. Defaults to False.
+
+        Returns
+        -------
+        object
+            If `inplace` is False, a cloned item collection is returned.
+        """
+        if not inplace:
+            x = self.clone()
+        else:
+            x = self
+
+        for item in self.items:
+            projv2_to_projv12(item, inplace=True)
+        
+        if not inplace:
+            return x
+
     def drop_non_raster(self, pattern="^proj:|^raster:", inplace=False):
         """Drop non raster assets from each item in the collection,
         based on pattern searched in asset extra_fields.
@@ -642,6 +672,8 @@ class ItemCollection(pystac.ItemCollection, ExtendPystacClasses):
         super().__init__(items, **kwargs)
         if sg_version > "0.3.2":
             unify_properties(self, inplace=True)
+        if stackstac.__version__ <= "0.5.1":
+            self.projv2_to_projv12(inplace=True)
 
 # class Catalog(pystac.Catalog, ExtendPystacClasses):
 #     pass
@@ -1128,6 +1160,43 @@ def filter_assets(
 
     return item
 
+def projv2_to_projv12(item: pystac.Item, inplace=False):
+    """
+    Converts extension projection v2 to projection v1.2, i.e.
+    it adds back "proj:epsg" to the asset extra_fields when only "proj:code"
+    is present.
+
+    This is necessary while stackstac [issue #262](https://github.com/gjoseph92/stackstac/issues/262)
+    is not solved.
+
+    Parameters
+    ----------
+    item: pystac.Item
+      The item from which to filter assets.
+    inplace: bool, optional
+        If True, the assets will be filtered in place.
+        Otherwise, a clone of the item will be created and modified.
+
+    Returns
+    ------
+    pystac.Item
+        The modified item.
+    """
+    if not inplace:
+        item = item.clone()
+
+    schema_v2 = "https://stac-extensions.github.io/projection/v2.0.0/schema.json"
+    schema_v1_2 = "https://stac-extensions.github.io/projection/v1.2.0/schema.json"
+    if schema_v2 in item.stac_extensions:
+        item.stac_extensions.remove(schema_v2)
+        item.stac_extensions.append(schema_v1_2)
+        
+    for k,v in item.assets.items():
+        if "proj:epsg" not in v.extra_fields and "proj:code" in v.extra_fields:
+            if v.extra_fields["proj:code"].startswith("EPSG:"):
+                v.extra_fields["proj:epsg"] = int(re.sub("EPSG:", "", v.extra_fields["proj:code"]))
+    
+    return item
 
 def harmonize_sen2cor_offset(x, assets=S2_SEN2COR_BANDS, inplace=False):
     """

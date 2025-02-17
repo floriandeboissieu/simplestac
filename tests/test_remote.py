@@ -5,6 +5,13 @@ from tempfile import TemporaryDirectory
 import numpy as np
 
 
+def test_projv2_to_projv12(maja_col):
+    col = ItemCollection(maja_col)
+    ef = col[0].assets["B02"].extra_fields
+    assert "proj:epsg" in ef
+    assert isinstance(ef["proj:epsg"], int)
+    col[0].validate()
+
 def test_filter_assets(pc_col):
     col = ItemCollection(pc_col)
     col1 = col.filter_assets(assets=["B02", "B03"])
