@@ -1191,10 +1191,10 @@ def projv2_to_projv12(item: pystac.Item, inplace=False):
         item.stac_extensions.remove(schema_v2)
         item.stac_extensions.append(schema_v1_2)
         
-    for k,v in item.assets.items():
-        if "proj:epsg" not in v.extra_fields and "proj:code" in v.extra_fields:
-            if v.extra_fields["proj:code"].startswith("EPSG:"):
-                v.extra_fields["proj:epsg"] = int(re.sub("EPSG:", "", v.extra_fields["proj:code"]))
+        for k,v in item.assets.items():
+            if "proj:epsg" not in v.extra_fields and "proj:code" in v.extra_fields:
+                if v.extra_fields["proj:code"].startswith("EPSG:"):
+                    v.extra_fields["proj:epsg"] = int(re.sub("EPSG:", "", v.extra_fields["proj:code"]))
     
     return item
 
