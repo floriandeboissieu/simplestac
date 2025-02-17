@@ -20,7 +20,8 @@ dependencies:
   - git
   - geopandas
   - pygeofilter
-  - pystac
+  # fix pystac version due to stackstac issue: https://github.com/gjoseph92/stackstac/issues/262
+  - pystac < 1.12
   - pyarrow
   - pip
   - pip:
