@@ -683,11 +683,11 @@ def write_assets(x: Union[ItemCollection, pystac.Item],
         Argument forwarded to ItemCollection.to_xarray to rioxarray.clip the assets to.
         Usually a GeoDataFrame or GeoSeries.
         See notes.
-    update : bool, optional
-        Whether to update the item properties with the new asset paths.
+    keep_asset_attrs : bool, optional
+        Whether to keep the asset attributes in the returned item collection.
         Defaults to True.
     xy_coords : str, optional
-        The coordinate system to use for the x and y coordinates of the
+        Argument forwarded to ItemCollection.to_xarray.
     remove_item_props : list of str
         List of regex patterns to remove from item properties.
         If None, no properties are removed.
