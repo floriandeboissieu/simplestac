@@ -64,3 +64,18 @@ def pc_col2(roi):
     )
     col = search.item_collection()
     yield col
+
+@pytest.fixture(scope="session")
+def maja_col(roi):
+    URL = 'https://stacapi-cdos.apps.okd.crocc.meso.umontpellier.fr'
+    collection = 'sentinel2-l2a-theia'
+    time_range = "2016-01-01/2016-01-31"
+    catalog = pystac_client.Client.open(URL)
+    search = catalog.search(
+        collections=[collection],
+        bbox=roi.to_crs(4326).total_bounds,
+        datetime=time_range,
+        sortby="datetime",
+    )
+    col = search.item_collection()
+    yield col
