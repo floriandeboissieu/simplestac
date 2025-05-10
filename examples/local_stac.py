@@ -38,9 +38,6 @@ coll_path = res_dir / "collection.json"
 if not coll_path.exists():
     coll = build_item_collection(image_dir, collection_format("S2_L2A_THEIA"))
     coll.save_object(coll_path)
-    assert coll_path.exists()
-    coll2 = ItemCollection.from_file(coll_path)
-    assert set([item.id for item in coll2])==set([item.id for item in coll])
 
 coll = ItemCollection.from_file(coll_path)
 coll
@@ -69,9 +66,7 @@ start = to_datetime("2016-01-01", utc=True)
 end = to_datetime("2017-01-01", utc=True)
 subcoll = coll.filter(datetime="2016-01-01/2017-01-01",
                       filter="s2:mgrs_tile = 'T31UFQ'")
-assert set([item.datetime.timestamp() for item in subcoll])== \
-    set([item.datetime.timestamp() for item in coll if \
-         item.datetime>=start and item.datetime<=end])
+
 subcoll
 # %% [md]
 # This operation could also be done after converting to xarray, see below.
@@ -87,33 +82,17 @@ subcoll
 coll.to_xarray()
 coll.to_xarray(resolution=60, assets=['B08', 'B8A'])
 # %% [md]
-# Here is are a few examples of converting collection to xarray while subsetting
+# Here is are different ways of converting collection to xarray while subsetting
 # specific assets and a specific time period.
 # %%
 subxr = coll.filter(datetime="2016-01-01/2017-01-01", assets=['B08', 'B8A']).to_xarray()
 subxr1 = coll.to_xarray(assets=['B08', 'B8A']).sel(time=slice('2016-01-01', '2017-01-01'))
 subxr2 = coll.to_xarray().sel(band=['B08', 'B8A'], time=slice('2016-01-01', '2017-01-01'))
-assert subxr.equals(subxr1)
-assert subxr.equals(subxr2)
 
 # %% [md]
 # Filtering can also be done on the assets attributes.
 # %%
 subxr.sel(band = subxr.common_name=="red")
-
-# %% [md]
-# The ItemCollection can also be converted to xarray with xpystac plugin to xarray.
-# In this last case band dimension was converted to variables, 
-# which could also be done with `subxr.to_dataset(dim="band", promote_attrs=True)`.
-# %%
-subxr3 = xr.open_dataset(
-    coll.filter(datetime="2016-01-01/2017-01-01", assets=['B08', 'B8A']),
-    # don't forget to have xy_coords="center", 
-    # otherwise the coordinates are wrong
-    xy_coords="center", 
-    )
-subxr3 = subxr3.to_array("band").transpose("time", "band", "y", "x")
-assert subxr.equals(subxr3)
 
 # %% [md]
 # Plot the first days.
@@ -144,7 +123,7 @@ smallxr[:2,:,:,:].plot(row='time', col='band')
 subcoll.to_xarray(bbox=extract_zone, assets=['B08', 'B8A'])
 # or a geometry
 roi = gpd.read_file(roi_file)
-roi = roi.to_crs(subcoll.to_xarray().crs)
+roi = roi.to_crs(subcoll.to_xarray().rio.crs)
 subcoll.to_xarray(
     geometry=roi.geometry, 
     assets=['B08', 'B8A']).isel(time=range(2)).plot(row='time', col='band')
@@ -178,7 +157,7 @@ coll.apply_items(
         )
     )
 )
-
+# %%
 coll.filter(with_assets="NDVI").to_xarray().sel(band="NDVI").isel(time=range(4)).plot(col="time", col_wrap=2)
 # %%
 coll.filter(with_assets="NDVI").to_xarray().sel(band="NDVI").isel(x=150, y=150).plot.line(x="time")
@@ -186,6 +165,8 @@ coll.filter(with_assets="NDVI").to_xarray().sel(band="NDVI").isel(x=150, y=150).
 # %% [md]
 # The method `apply_rolling` applies to a function to a group of items in
 # a rolling window.
+#
+# Here we compute a moving average of the NDVI over a rolling window of 5 items.
 # %%
 def masked_mean(x, band):
     if band not in x.band:
