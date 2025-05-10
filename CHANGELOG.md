@@ -1,6 +1,7 @@
 # v1.2.2
 ## Add
 - `ItemCollection.filter_assets`: filter assets (keep or drop)
+- `ItemCollection.get_epsg`: get the epsg of items or assets
 
 ## Fix
 - log as info if writing had an error (issue #2)

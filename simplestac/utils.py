@@ -95,6 +95,42 @@ class ExtendPystacClasses:
         if not inplace:
             return x
 
+    def _get_property(self, prop="proj:epsg"):
+        prop_list = []
+        for item in self:
+            p = item.properties
+            if prop in p and p[prop]:
+                prop_list.append(p[prop])
+            else:
+                for asset in item.assets.values():
+                    pa = asset.extra_fields
+                    if prop in pa and pa[prop]:
+                        prop_list.append(pa[prop])
+        return list(set(prop_list))
+    
+    def get_epsg(self, unique=True):
+        """Get epsg codes from all items and assetsin the collection
+        
+        Parameters
+        ----------
+        unique : bool
+            If True, a unique epsg code is returned and
+            raises an error if multiple epsg codes are found.
+            If False, a list of epsg codes is returned.
+            Defaults to True.
+        
+        Returns
+        -------
+        str or list
+        """
+        epsg = self._get_property(prop="proj:epsg")
+        if unique:
+            if len(epsg) == 1:
+                epsg = epsg[0]
+            else:
+                raise ValueError("Multiple epsg found in collection")
+        return epsg
+
     def drop_non_raster(self, pattern="^proj:|^raster:", inplace=False):
         """Drop non raster assets from each item in the collection,
         based on pattern searched in asset extra_fields.
