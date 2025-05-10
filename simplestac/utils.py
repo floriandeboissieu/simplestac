@@ -1234,12 +1234,19 @@ def projv2_to_projv12(item: pystac.Item, inplace=False):
     
     return item
 
-def harmonize_sen2cor_offset(x, assets=S2_SEN2COR_BANDS, inplace=False):
+def harmonize_sen2cor_offset(x: ItemCollection, assets=S2_SEN2COR_BANDS, inplace=False):
     """
-    Harmonize new Sentinel-2 item collection (Sen2Cor v4+, 2022-01-25)
-    to the old baseline (v3-):
-    adds an offset of -1000 to the asset extra field "raster:bands" of the items
-    with datetime >= 2022-01-25
+    Harmonize new Sentinel-2 item with Sen2Cor v4+.
+
+    Since Sen2Cor v4.0.0 (2022-01-25), an offset of -1000 has been added to the
+    reflectance values of the spectral bands in order to have them in
+    uint16 instead of int16. This function adds an offset of -1000 to
+    the spectral band assets extra field "raster:bands" for items with
+    processing baseline >= v4.
+    
+    The processing baseline version is expected in properties
+    processing:version or s2:processing_baseline with format
+    "xx.yy", e.g. "05.10".
 
     Parameters
     ----------
@@ -1268,6 +1275,15 @@ def harmonize_sen2cor_offset(x, assets=S2_SEN2COR_BANDS, inplace=False):
     Warning, if None
     """
     offsetv4=-1000
+    proc_prop = "processing:version"
+    s2_prop = "s2:processing_baseline"
+    
+    if proc_prop in x[0].properties:
+        prop = proc_prop
+    if s2_prop in x[0].properties:
+        prop = s2_prop
+    else:
+        raise ValueError("No processing:version or s2:processing_baseline found in item collection.")
 
     if not inplace:
         x = x.clone()
@@ -1280,7 +1296,7 @@ def harmonize_sen2cor_offset(x, assets=S2_SEN2COR_BANDS, inplace=False):
                     asset.extra_fields["raster:bands"] = [dict(offset=0)]
                 # update raster:bands offset for specific dates
                 rb = asset.extra_fields["raster:bands"][0]
-                if item.properties["datetime"] >= "2022-01-25":
+                if float(item.properties[prop]) >= 4.0:
                     scale = rb["scale"] if "scale" in rb else 1.
                     rb.update(dict(offset=offsetv4*scale))
     if not inplace:
