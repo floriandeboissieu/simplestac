@@ -5,6 +5,7 @@
 ## Fix
 - log as info if writing had an error (issue #2)
 - convert projection v2 to projection v1.2 (issue #3)
+- `unify_properties` for `inplace=False`
 
 # v1.2.1
 ## Add

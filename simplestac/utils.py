@@ -903,7 +903,7 @@ def unify_properties(x: ItemCollection, method="fill",inplace=False):
     ItemCollection if inplace is False, else None.
     """
     if not inplace:
-        collection = collection.copy()
+        x = x.copy()
 
     keys = set(x.items[0].properties.keys())
     udiff = []
@@ -935,7 +935,7 @@ def unify_properties(x: ItemCollection, method="fill",inplace=False):
         raise ValueError(f"Unknown method: {method}")
 
     if not inplace:
-        return collection
+        return x
 
 def apply_item(x, fun, name, output_dir, collection_ready=False, overwrite=False,
                copy=True, bbox=None, geometry=None, writer_args=None, 
