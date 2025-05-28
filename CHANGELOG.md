@@ -8,7 +8,8 @@
 - convert projection v2 to projection v1.2 (issue #3)
 - `unify_properties` for `inplace=False`
 - `harmonize_sen2cor_offset` based on processing baseline version instead of
-  datetime
+  datetime (issue #5)
+- `update_scale_offset` unscale offset before rescale if new scale (issue #6)
 
 # v1.2.1
 ## Add
