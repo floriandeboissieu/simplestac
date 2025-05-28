@@ -43,6 +43,10 @@ def test_update_scale_offset(pc_col):
     col1 = update_scale_offset(col, scale, offset)
     assert col1[0].assets["B02"].extra_fields["raster:bands"][0]["scale"] == 0.0001
     assert col1[0].assets["B02"].extra_fields["raster:bands"][0]["offset"] == -0.1
+    
+    col2 = update_scale_offset(col1, scale=1.0)
+    assert col2[0].assets["B02"].extra_fields["raster:bands"][0]["scale"] == 1.0
+    assert col2[0].assets["B02"].extra_fields["raster:bands"][0]["offset"] == -1000
 
     col2 = harmonize_sen2cor_offset(col)
     col1 = update_scale_offset(col2, scale)

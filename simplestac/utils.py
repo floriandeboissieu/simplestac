@@ -1342,9 +1342,10 @@ def update_scale_offset(x, scale=None, offset=None, rescale_offset=True, assets=
                     asset.extra_fields["raster:bands"] = [dict()]
                 rb = asset.extra_fields["raster:bands"][0]
                 if scale is not None:
+                    old_scale = rb.get("scale", 1.)
                     rb.update(dict(scale=scale))
                     if rescale_offset and "offset" in rb:
-                        rb["offset"] = rb["offset"] * scale
+                        rb["offset"] = rb["offset"] * scale / old_scale
                 if offset is not None:
                     rb.update(dict(offset=offset))
 
