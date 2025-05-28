@@ -1,15 +1,20 @@
-# v1.2.2
+# v1.2.3
 ## Add
-- `ItemCollection.filter_assets`: filter assets (keep or drop)
 - `ItemCollection.get_epsg`: get the epsg of items or assets
 
 ## Fix
-- log as info if writing had an error (issue #2)
-- convert projection v2 to projection v1.2 (issue #3)
 - `unify_properties` for `inplace=False`
 - `harmonize_sen2cor_offset` based on processing baseline version instead of
   datetime (issue #5)
 - `update_scale_offset` unscale offset before rescale if new scale (issue #6)
+
+# v1.2.2
+## Add
+- `ItemCollection.filter_assets`: filter assets (keep or drop)
+
+## Fix
+- log as info if writing had an error (issue #2)
+- convert projection v2 to projection v1.2 (issue #3)
 
 # v1.2.1
 ## Add
