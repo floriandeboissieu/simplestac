@@ -305,7 +305,7 @@ def collection_format(type="S2_L2A_THEIA", formats_dir=FORMATS_DIR):
     """
     # https://github.com/stac-utils/stac-sentinel/blob/main/stac_sentinel/sentinel-s2-l2a.json
     # https://github.com/appelmar/gdalcubes/blob/master/inst/formats/Sentinel2_L2A_THEIA.json
-    file_path = Path(formats_dir).expand().relpath() / type+".json"
+    file_path = Path(formats_dir).expand() / type+".json"
     with open(file_path) as f:
         fmt = json.load(f)
         return fmt
