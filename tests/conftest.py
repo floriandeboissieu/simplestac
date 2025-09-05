@@ -18,6 +18,11 @@ def s2scene_dir():
     yield scene_dir
 
 @pytest.fixture(scope="session")
+def s2scene_zip_dir():
+    scene_dir = here / "data" / "s2_scenes_zip"
+    yield scene_dir
+
+@pytest.fixture(scope="session")
 def roi_file():
     roi_file = here / "data" / "roi_small.geojson"
     yield roi_file

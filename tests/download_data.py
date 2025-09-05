@@ -17,9 +17,11 @@ from path import Path
 from tempfile import TemporaryDirectory
 from urllib.request import urlretrieve
 import zipfile
+import shutil
 
 data_dir = Path(__file__).parent / "data"
 s2_dir = data_dir / "s2_scenes"
+s2_zip_dir = data_dir / "s2_scenes_zip"
 roi_file = data_dir / "roi.geojson"
 roi_small_file = data_dir / "roi_small.geojson"
 n_scenes = 5 # number of scenes to keep
@@ -52,3 +54,9 @@ if not roi_small_file.exists():
     roi = gpd.read_file(roi_file)
     roi[2:3].centroid.buffer(100, cap_style=3).to_file(roi_small_file)
 
+# produce directory with items in zip
+if not s2_zip_dir.exists():
+    s2_zip_dir.mkdir()
+    for scene in s2_dir.dirs():
+        print(s2_zip_dir / scene.basename())
+        shutil.make_archive(s2_zip_dir / scene.basename(), 'zip', root_dir=s2_dir, base_dir=scene.basename())
