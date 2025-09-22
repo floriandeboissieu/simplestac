@@ -1,3 +1,10 @@
+# v1.2.4
+## Add
+- support for zip files when building ItemCollection (issue #8)
+
+## Change
+- remove constraint on pystac version
+
 # v1.2.3
 ## Add
 - `ItemCollection.get_epsg`: get the epsg of items or assets
