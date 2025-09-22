@@ -21,7 +21,7 @@ dependencies:
   - geopandas
   - pygeofilter
   # fix pystac version due to stackstac issue: https://github.com/gjoseph92/stackstac/issues/262
-  - pystac < 1.12
+  - pystac
   - pyarrow
   - pip
   - pip:
