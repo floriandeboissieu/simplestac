@@ -136,6 +136,7 @@ def stac_proj_info(bbox, gsd, meta):
     # _, _, centroid = bbox_to_wgs(bbox, meta["crs"])
     proj = dict(
         epsg = epsg,
+        code = f"EPSG:{epsg}", #epsg,
         wkt2 = wkt2,
         # geometry = bbox_to_geom(bbox),
         geometry = bbox_to_geom(bbox),
@@ -488,7 +489,10 @@ def stac_item_parser(item_dir, fmt, assets=None, expand_end_date=True):
         id = id,
         datetime=None, # necessary for pystac.Item if datetime is in properties
         properties = properties,
-        stac_extensions = [eo.SCHEMA_URI, projection.SCHEMA_URI, raster.SCHEMA_URI],
+        stac_extensions = [
+            eo.SCHEMA_URI,
+            "https://stac-extensions.github.io/projection/v1.2.0/schema.json",
+            raster.SCHEMA_URI],
     )
     stac_fields.update(dt_dict)
 
