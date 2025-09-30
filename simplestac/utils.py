@@ -204,7 +204,7 @@ class ExtendPystacClasses:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
             try:
-                arr = stackstac.stack(self, xy_coords=xy_coords, gdal_env=gdal_env, bounds=bbox, **kwargs)
+                arr = stackstac.stack(self, xy_coords=xy_coords, gdal_env=gdal_env, **kwargs)
             except ValueError as e:
                 if "Cannot automatically compute the resolution" in str(e):
                     raise ValueError(str(e)+"\nOr drop non-raster assets from collection with ItemCollection.drop_non_raster()")
