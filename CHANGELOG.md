@@ -1,5 +1,13 @@
+
 ## Fix
 - `harmonize_sen2cor_offset` a double if condition prevented to use some sensor versions.
+
+# v1.2.4
+## Add
+- support for zip files when building ItemCollection (issue #8)
+
+## Change
+- remove constraint on pystac version
 
 # v1.2.3
 ## Add

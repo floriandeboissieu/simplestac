@@ -26,6 +26,8 @@ from shapely import to_geojson
 from shapely.ops import unary_union
 from tqdm import tqdm
 import warnings
+from zipfile import ZipFile
+
 
 from rio_cogeo.cogeo import cog_validate
 
@@ -59,13 +61,13 @@ def get_rio_info(file):
         tags = src.tags()
         scales = src.scales
         offsets = src.offsets
-    
-    # If needed at some point, we could test MediaType.COG with rio_cogeo.cogeo.cog_validate  
+
+    # If needed at some point, we could test MediaType.COG with rio_cogeo.cogeo.cog_validate
     if media_type == pystac.MediaType.GEOTIFF:
         iscog, _, _ = cog_validate(file, quiet=True)
         if iscog:
             media_type = pystac.MediaType.COG
-        
+
     return bbox, media_type, gsd, meta, tags, scales, offsets
 
 def get_media_type(
@@ -110,7 +112,7 @@ def get_media_type(
 def stac_proj_info(bbox, gsd, meta):
     """Projection information returned in the STAC format.
 
-    It converts typical 
+    It converts typical
 
     Parameters
     ----------
@@ -136,6 +138,7 @@ def stac_proj_info(bbox, gsd, meta):
     # _, _, centroid = bbox_to_wgs(bbox, meta["crs"])
     proj = dict(
         epsg = epsg,
+        code = f"EPSG:{epsg}", #epsg,
         wkt2 = wkt2,
         # geometry = bbox_to_geom(bbox),
         geometry = bbox_to_geom(bbox),
@@ -150,7 +153,7 @@ def stac_proj_info(bbox, gsd, meta):
             for name, value in proj.items()
     }
     proj_info.update(gsd = gsd)
-    
+
     return proj_info
 
 def stac_raster_info(meta, tags, gsd, scales, offsets):
@@ -173,11 +176,11 @@ def stac_raster_info(meta, tags, gsd, scales, offsets):
     -------
     dict
         STAC extension raster information, with prefix `raster:bands`
-    
+
     See also
     --------
     simplestac.local.get_rio_info
-    
+
     Notes
     -----
     See https://github.com/stac-extensions/raster
@@ -189,15 +192,15 @@ def stac_raster_info(meta, tags, gsd, scales, offsets):
         bands[0]["sampling"] = tags["AREA_OR_POINT"].lower()
     if "dtype" in meta:
         bands[0]["datatype"] = meta["dtype"]
-    
+
     # 'resolution' is not always in tags, thus gsd is used instead.
     bands[0]["spatial_resolution"] = gsd
-    
+
     if scales is not None:
         bands[0]["scale"] = scales[0]
     if offsets is not None:
         bands[0]["offset"] = offsets[0]
-    
+
     return {"raster:bands": bands}
 
 
@@ -261,7 +264,7 @@ def common_name_table():
     """
     Returns a table of common band names and their corresponding
     wavelenght minimum and maximum values.
-    
+
     Returns
     -------
     table : pandas.DataFrame
@@ -312,8 +315,8 @@ def collection_format(type="S2_L2A_THEIA", formats_dir=FORMATS_DIR):
 
 def stac_asset_info_from_raster(band_file, band_fmt=None):
     """Parse band information for stac.
-    
-    It uses the file basename to get the band and 
+
+    It uses the file basename to get the band and
     the rasterio header info for the rest.
 
     Parameters
@@ -323,17 +326,17 @@ def stac_asset_info_from_raster(band_file, band_fmt=None):
     band_fmt : dict, optional
         The band format information, by default None.
         See `collection_format`.
-    
+
     Returns
     -------
     dict
         The stac asset information.
     """
-    
+
     # band_fmt = fmt["bands"]["B02"]
 
     band_file = Path(band_file).expand()
-    
+
     # get rasterio information
     if band_fmt is None:
         band_fmt = dict(roles=["data"])
@@ -360,7 +363,6 @@ def stac_asset_info_from_raster(band_file, band_fmt=None):
     stac_fields.update(proj_info)
     raster_info = stac_raster_info(meta, tags, gsd, scales, offsets)
     stac_fields.update(raster_info)
-    
     return stac_fields
 
 def properties_from_assets(assets, update_assets=True):
@@ -389,7 +391,7 @@ def properties_from_assets(assets, update_assets=True):
             bbox = gpd.GeoSeries(box(*v.extra_fields["proj:bbox"]), crs=epsg).to_crs(4326)
             epsg_list.append(epsg)
             bbox_list.append(bbox)
-    
+
     if len(set(epsg_list)) == 1 and epsg_list[0] is not None:
         properties.update({
             "proj:epsg" : int(epsg_list[0])
@@ -426,12 +428,12 @@ def stac_item_parser(item_dir, fmt, assets=None, expand_end_date=True):
         if end date is 2019-12-31, it should default to 2019-12-31T23:59:59.999999999Z.
         We simplify it to 2019-12-31T23:59:59Z.
         See https://github.com/radiantearth/stac-spec/issues/1255.
-    
+
     Returns
     -------
     dict
         The STAC item information.
-    
+
     Examples
     --------
     >>> from path import Path
@@ -470,7 +472,7 @@ def stac_item_parser(item_dir, fmt, assets=None, expand_end_date=True):
                 if dt is not None:
                     dt = to_datetime(dt.group(1), format=v["format"])
                     dt_dict[k] = dt
-    
+
     # have end_datetime inclusive
     if expand_end_date:
         if "end_datetime" in dt_dict:
@@ -488,7 +490,10 @@ def stac_item_parser(item_dir, fmt, assets=None, expand_end_date=True):
         id = id,
         datetime=None, # necessary for pystac.Item if datetime is in properties
         properties = properties,
-        stac_extensions = [eo.SCHEMA_URI, projection.SCHEMA_URI, raster.SCHEMA_URI],
+        stac_extensions = [
+            eo.SCHEMA_URI,
+            "https://stac-extensions.github.io/projection/v1.2.0/schema.json",
+            raster.SCHEMA_URI],
     )
     stac_fields.update(dt_dict)
 
@@ -496,7 +501,7 @@ def stac_item_parser(item_dir, fmt, assets=None, expand_end_date=True):
     geometry = bbox_wgs = None
     if assets is not None:
         bbox_wgs, geometry, assets_props = properties_from_assets(assets)
-        
+
         # In case of ItemCollection, href is not included as it designates the json file
         # where the item description should be saved. Using pystac Collection or Catalog,
         # the href would be filled when saved.
@@ -524,7 +529,7 @@ def stac_asset_parser(item_dir, fmt):
     -------
     dict
         The STAC asset information.
-    
+
     Examples
     --------
     >>> from path import Path
@@ -535,21 +540,37 @@ def stac_asset_parser(item_dir, fmt):
     """
     item_dir = Path(item_dir).expand()
     fmt = fmt["item_assets"]
+    bands = fmt
 
     # parsing assets
     asset_list = []
-    all_files = [f for f in item_dir.walkfiles()]
-    bands = fmt
-    for key, band in bands.items():
-        if "pattern" not in band:
-            continue
-        band_files = [f for f in all_files if re.match(band["pattern"]+"$", f.name)]
-        if len(band_files)==0:
-            logger.debug(f"Band '{key}' not found in {item_dir}")
-            continue
-        stac_info = stac_asset_info_from_raster(band_files[0], band)
-        asset_list.append((key, pystac.Asset.from_dict(stac_info)))
-    
+    if item_dir.endswith('zip'):
+        with ZipFile(item_dir) as zip_ds:
+            all_files = [ Path(name) for name in zip_ds.namelist()]
+
+        for key, band in bands.items():
+            if "pattern" not in band:
+                continue
+            band_files = [f for f in all_files if re.match(band["pattern"]+"$", f.name)]
+            if len(band_files)==0:
+                logger.debug(f"Band '{key}' not found in {item_dir}")
+                continue
+            band_zip_name = 'zip+file:' + str(item_dir) + '!' + str(band_files[0])
+            stac_info = stac_asset_info_from_raster(band_zip_name, band)
+            asset_list.append((key, pystac.Asset.from_dict(stac_info)))
+
+    else:
+        all_files = [f for f in item_dir.walkfiles()]
+        for key, band in bands.items():
+            if "pattern" not in band:
+                continue
+            band_files = [f for f in all_files if re.match(band["pattern"]+"$", f.name)]
+            if len(band_files)==0:
+                logger.debug(f"Band '{key}' not found in {item_dir}")
+                continue
+            stac_info = stac_asset_info_from_raster(band_files[0], band)
+            asset_list.append((key, pystac.Asset.from_dict(stac_info)))
+
     # sort assets in the order of theia_band_index
     df =  DataFrame(asset_list, columns=['band', 'asset'])
     assets = list(df.itertuples(index=False, name=None))
@@ -561,7 +582,7 @@ def stac_asset_parser(item_dir, fmt):
 
 class MyStacItem(object):
     """Create a STAC item from a local directory.
-    
+
     Parameters
     ----------
     fmt : dict
@@ -605,25 +626,25 @@ class MyStacItem(object):
         self.fmt = fmt
         self.item_parser = item_parser
         self.asset_parser = asset_parser
-    
+
     @property
     def item_dir(self):
         return self._item_dir
-    
+
     @item_dir.setter
     def item_dir(self, x):
         self._item_dir = Path(x).expand()
-    
+
     def create_item(self, item_dir, validate=True):
         """Create the item for the scene.
-        
+
         Parameters
         ----------
         item_dir : str
             The directory path of the scene.
         validate : bool, optional
             Whether to validate the item structure, by default True
-        
+
         Returns
         -------
         pystac.Item
@@ -636,10 +657,10 @@ class MyStacItem(object):
         # prepare item dict
         # stac_info = self.get_item_info(assets)
         stac_info = self.item_parser(self.item_dir, self.fmt, assets)
-        
+
         # create item
         item = pystac.Item(**stac_info)
-        # validate item structure        
+        # validate item structure
         if validate:
             item.validate()
 
@@ -661,7 +682,7 @@ def get_item_dirs(input_dir, fmt):
     -------
     list
         A list of item directories found based on the format.
-    """    
+    """
     item_dirs = []
     if isinstance(input_dir, list):
         for d in input_dir:
@@ -671,8 +692,14 @@ def get_item_dirs(input_dir, fmt):
     input_dir = Path(input_dir).expand()
     if re.match(fmt["item"]["pattern"], input_dir.name):
         item_dirs.append(input_dir)
-    else:
-        item_dirs = get_item_dirs(input_dir.dirs(), fmt)
+
+    if input_dir.is_dir():
+        for child in input_dir.iterdir():
+            if child.is_dir():
+                item_dirs.extend(get_item_dirs(child, fmt))
+            elif child.is_file() and child.suffix == ".zip":
+                if re.match(fmt["item"]["pattern"], child.name):
+                    item_dirs.append(child)
     return item_dirs
     
 def build_item_collection(input_dir,

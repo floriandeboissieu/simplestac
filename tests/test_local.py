@@ -18,6 +18,14 @@ def test_build(s2scene_dir):
     extra_fields = col[0].assets["B02"].extra_fields
     raster_bands = extra_fields["raster:bands"][0]
     assert raster_bands["spatial_resolution"] == 10
+
+def test_build_zip(s2scene_zip_dir):
+    col = build_item_collection(s2scene_zip_dir, collection_format())
+    assert len(col) == len(s2scene_zip_dir.dirs() + s2scene_zip_dir.files())
+    assert len(col[0].assets) == 11
+    extra_fields = col[0].assets["B02"].extra_fields
+    raster_bands = extra_fields["raster:bands"][0]
+    assert raster_bands["spatial_resolution"] == 10
     
 
 def test_datetime(s2scene_dir):

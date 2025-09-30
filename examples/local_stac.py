@@ -42,6 +42,10 @@ if not coll_path.exists():
 coll = ItemCollection.from_file(coll_path)
 coll
 # %% [md]
+# _Good to know:_ `build_item_collection` also works with scenes compressed as zip file, e.g.
+# `SENTINEL2A_20170526-105518-082_L2A_T31UFQ_D_V1-4.zip`. It will look for the band patterns 
+# into the zip namespace.
+# 
 # Now let's browse the different methods added to ItemCollection.
 # ## Convert to a geodataframe
 # %%
