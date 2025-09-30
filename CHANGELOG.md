@@ -1,3 +1,6 @@
+## Fix
+- `harmonize_sen2cor_offset` a double if condition prevented to use some sensor versions.
+
 # v1.2.3
 ## Add
 - `ItemCollection.get_epsg`: get the epsg of items or assets
