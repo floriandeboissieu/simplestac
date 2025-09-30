@@ -1283,7 +1283,7 @@ def harmonize_sen2cor_offset(x: ItemCollection, assets=S2_SEN2COR_BANDS, inplace
     
     if proc_prop in x[0].properties:
         prop = proc_prop
-    if s2_prop in x[0].properties:
+    elif s2_prop in x[0].properties:
         prop = s2_prop
     else:
         raise ValueError("No processing:version or s2:processing_baseline found in item collection.")
