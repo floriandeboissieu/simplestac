@@ -204,7 +204,7 @@ class ExtendPystacClasses:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
             try:
-                arr = stackstac.stack(self, xy_coords=xy_coords, gdal_env=gdal_env, **kwargs)
+                arr = stackstac.stack(self, xy_coords=xy_coords, gdal_env=gdal_env, bounds=bbox, **kwargs)
             except ValueError as e:
                 if "Cannot automatically compute the resolution" in str(e):
                     raise ValueError(str(e)+"\nOr drop non-raster assets from collection with ItemCollection.drop_non_raster()")
@@ -1280,7 +1280,7 @@ def harmonize_sen2cor_offset(x: ItemCollection, assets=S2_SEN2COR_BANDS, inplace
     
     if proc_prop in x[0].properties:
         prop = proc_prop
-    if s2_prop in x[0].properties:
+    elif s2_prop in x[0].properties:
         prop = s2_prop
     else:
         raise ValueError("No processing:version or s2:processing_baseline found in item collection.")
