@@ -9,7 +9,7 @@ import geopandas as gpd
 
 def test_formatting():
     fmt = collection_format()
-    assert fmt["item"]["pattern"] == '(SENTINEL2[AB]_[0-9]{8}-[0-9]{6}-[0-9]{3}_L2A_T[0-9A-Z]{5}_[A-Z]_V[0-9]-[0-9])'
+    assert fmt["item"]["pattern"] == '(SENTINEL2[AB]_[0-9]{8}-[0-9]{6}-[0-9]{3}_L2A_T[0-9A-Z]{5}_[A-Z]_V[0-9]-[0-9])$'
 
 def test_build(s2scene_dir):
     col = build_item_collection(s2scene_dir, collection_format())
@@ -18,6 +18,14 @@ def test_build(s2scene_dir):
     extra_fields = col[0].assets["B02"].extra_fields
     raster_bands = extra_fields["raster:bands"][0]
     assert raster_bands["spatial_resolution"] == 10
+
+    # simulate a subdir with same starting name
+    scene = s2scene_dir.dirs()[0]
+    fake_subdir = scene / f"{scene.name}_PVD_ALL"
+    fake_subdir.mkdir()
+    col = build_item_collection([scene], collection_format())
+    assert len(col) == 1
+    fake_subdir.rmdir()
 
 def test_build_zip(s2scene_zip_dir):
     col = build_item_collection(s2scene_zip_dir, collection_format())

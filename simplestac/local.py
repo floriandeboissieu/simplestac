@@ -652,8 +652,13 @@ class MyStacItem(object):
         """
 
         self.item_dir = item_dir
+        logger.debug(f"Creating item for: {self.item_dir}")
         # create assets
         assets = self.asset_parser(self.item_dir, self.fmt)
+        if len(assets) == 0:
+            logger.warning(f"No assets found for {self.item_dir}"
+                           "\nThe item will not be created.")
+            return None
         # prepare item dict
         # stac_info = self.get_item_info(assets)
         stac_info = self.item_parser(self.item_dir, self.fmt, assets)
@@ -669,7 +674,8 @@ class MyStacItem(object):
 
 def get_item_dirs(input_dir, fmt):
     """
-    Recursively retrieves item directories based on the input directory and format.
+    Recursively retrieves item directories or zipfiles inside 
+    the input directory matching fmt["item"]["pattern"].
 
     Parameters
     ----------
@@ -681,7 +687,7 @@ def get_item_dirs(input_dir, fmt):
     Returns
     -------
     list
-        A list of item directories found based on the format.
+        A list of item directories or zipfiles matching the item pattern.
     """
     item_dirs = []
     if isinstance(input_dir, list):
@@ -698,7 +704,7 @@ def get_item_dirs(input_dir, fmt):
             if child.is_dir():
                 item_dirs.extend(get_item_dirs(child, fmt))
             elif child.is_file() and child.suffix == ".zip":
-                if re.match(fmt["item"]["pattern"], child.name):
+                if re.match(fmt["item"]["pattern"], child.stem):
                     item_dirs.append(child)
     return item_dirs
     
@@ -751,8 +757,8 @@ def build_item_collection(input_dir,
     items = []
     logger.info("Building item collection...")
     item_creator = MyStacItem(fmt, item_parser=item_parser, asset_parser=asset_parser)
-    for item in tqdm(item_dirs, disable=not progress):
-        items.append(
-            item_creator.create_item(item, validate=validate)
-        )
+    for item_dir in tqdm(item_dirs, disable=not progress):
+        item = item_creator.create_item(item_dir, validate=validate)
+        if item is not None:
+            items.append(item)
     return ItemCollection(items, clone_items=False, **kwargs)  
