@@ -9,7 +9,7 @@ import geopandas as gpd
 
 def test_formatting():
     fmt = collection_format()
-    assert fmt["item"]["pattern"] == '(SENTINEL2[AB]_[0-9]{8}-[0-9]{6}-[0-9]{3}_L2A_T[0-9A-Z]{5}_[A-Z]_V[0-9]-[0-9])$'
+    assert fmt["item"]["pattern"] == '(SENTINEL2[ABC]_[0-9]{8}-[0-9]{6}-[0-9]{3}_L2A_T[0-9A-Z]{5}_[A-Z]_V[0-9]-[0-9])$'
 
 def test_build(s2scene_dir):
     col = build_item_collection(s2scene_dir, collection_format())

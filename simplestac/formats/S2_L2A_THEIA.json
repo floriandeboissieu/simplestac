@@ -12,8 +12,10 @@
       "s2:mgrs_tile" : {
         "pattern" : ".+_(T[0-9A-Z]{5})_.+"
       },
-      "plateform" : ["sentinel-2a", "sentinel-2b"],
-      "constellation": "sentinel-2 l2a theia",
+      "plateform" : {
+        "pattern" : "(SENTINEL2[ABC]).+"
+      },
+      "constellation": "sentinel-2",
       "instruments" : ["msi"]
     }    
   },
