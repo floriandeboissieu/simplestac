@@ -1,4 +1,5 @@
 from simplestac.utils import write_assets, ItemCollection, harmonize_sen2cor_offset
+from path import Path
 import planetary_computer as pc
 import pystac_client
 from tempfile import TemporaryDirectory
@@ -11,6 +12,12 @@ def test_projv2_to_projv12(maja_col):
     assert "proj:epsg" in ef
     assert isinstance(ef["proj:epsg"], int)
     col[0].validate()
+
+    with TemporaryDirectory(prefix="simplestac-tests_") as tempdir:
+        col_file = Path(tempdir) / "collection.json"
+        col.save_object(col_file)
+        col2 = ItemCollection.from_file(col_file)
+        assert col2[0].assets["B02"].extra_fields["proj:epsg"] == ef["proj:epsg"]
 
 def test_filter_assets(pc_col):
     col = ItemCollection(pc_col)
@@ -25,6 +32,13 @@ def test_to_xarray(pc_col):
     col = ItemCollection(pc_col)
     x = col.drop_non_raster().to_xarray()
     assert len(x.time) == len(col)
+
+    with TemporaryDirectory(prefix="simplestac-tests_") as tempdir:
+        col_file = Path(tempdir) / "collection.json"
+        col.save_object(col_file)
+        col = ItemCollection.from_file(col_file)
+        x = col.drop_non_raster().to_xarray()
+        assert len(x.time) == len(col)
 
 def test_offset_harmonization(pc_col):
     col = ItemCollection(pc_col)

@@ -703,6 +703,9 @@ class ExtendPystacClasses:
             tolerance = arr.rio.resolution()[0] / 2
         return extract_points(arr, points, method=method, tolerance=tolerance, drop=drop)
 
+from pystac.item_collection import C
+from typing import Any
+
 class ItemCollection(pystac.ItemCollection, ExtendPystacClasses):
     def __init__(self, items: Iterable[ItemLike], **kwargs):
         super().__init__(items, **kwargs)
@@ -1226,6 +1229,7 @@ def projv2_to_projv12(item: pystac.Item, inplace=False):
     if schema_v2 in item.stac_extensions:
         item.stac_extensions.remove(schema_v2)
         item.stac_extensions.append(schema_v1_2)
+    if schema_v1_2 in item.stac_extensions:
         if "proj:epsg" not in item.properties and "proj:code" in item.properties:
             if item.properties["proj:code"].startswith("EPSG:"):
                 item.properties["proj:epsg"] = int(re.sub("EPSG:", "", item.properties["proj:code"]))

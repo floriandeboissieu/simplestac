@@ -1,6 +1,9 @@
 
+# v1.2.5
+
 ## Fix
-- `harmonize_sen2cor_offset` a double if condition prevented to use some sensor versions.
+- `harmonize_sen2cor_offset` a double if condition prevented to use some sensor versions (MR !16).
+- `projv2_to_projv12` for the case of `ItemCollection.from_file` (issue #13)
 
 # v1.2.4
 ## Add
