@@ -1229,6 +1229,9 @@ def projv2_to_projv12(item: pystac.Item, inplace=False):
     if schema_v2 in item.stac_extensions:
         item.stac_extensions.remove(schema_v2)
         item.stac_extensions.append(schema_v1_2)
+    # At the moment, pystac > 1.12 systematically pops proj:epsg
+    # even with ext projection v1.2.0, but does not update schema URI
+    # see https://github.com/stac-utils/pystac/pull/1590
     if schema_v1_2 in item.stac_extensions:
         if "proj:epsg" not in item.properties and "proj:code" in item.properties:
             if item.properties["proj:code"].startswith("EPSG:"):
