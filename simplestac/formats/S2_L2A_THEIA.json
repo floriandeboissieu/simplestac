@@ -1,19 +1,21 @@
 {
   "item" : {
-    "pattern" : "(SENTINEL2[AB]_[0-9]{8}-[0-9]{6}-[0-9]{3}_L2A_T[0-9A-Z]{5}_[A-Z]_V[0-9]-[0-9])",
+    "pattern" : "(SENTINEL2[ABC]_[0-9]{8}-[0-9]{6}-[0-9]{3}_L2A_T[0-9A-Z]{5}_[A-Z]_V[0-9]-[0-9])$",
     "properties": {
       "datetime" : {
-        "pattern" : "SENTINEL2[AB]_([0-9]{8}-[0-9]{6})-.*",
+        "pattern" : "SENTINEL2[ABC]_([0-9]{8}-[0-9]{6})-.*",
         "format" : "%Y%m%d-%H%M%S"
       },
       "title" : {
-        "pattern" : "(SENTINEL2[AB]_[0-9]{8}-[0-9]{6}-[0-9]{3}_L2A_T[0-9A-Z]{5}_[A-Z]_V[0-9]-[0-9])"
+        "pattern" : "(SENTINEL2[ABC]_[0-9]{8}-[0-9]{6}-[0-9]{3}_L2A_T[0-9A-Z]{5}_[A-Z]_V[0-9]-[0-9])"
       },
       "s2:mgrs_tile" : {
         "pattern" : ".+_(T[0-9A-Z]{5})_.+"
       },
-      "plateform" : ["sentinel-2a", "sentinel-2b"],
-      "constellation": "sentinel-2 l2a theia",
+      "plateform" : {
+        "pattern" : "(SENTINEL2[ABC]).+"
+      },
+      "constellation": "sentinel-2",
       "instruments" : ["msi"]
     }    
   },
