@@ -2,8 +2,13 @@
 # v1.2.5
 
 ## Fix
-- `harmonize_sen2cor_offset` a double if condition prevented to use some sensor versions (MR !16).
+- `harmonize_sen2cor_offset` a double if condition prevented to use some sensor
+  versions (MR !16).
 - `projv2_to_projv12` for the case of `ItemCollection.from_file` (issue #13)
+- if none of the expected assets are present in an item directory: add a warning
+  and skips item (issue #11)
+- changed pattern for THEIA format to include S2C and to avoid item pattern
+  match with sub-directories (e.g. {pat}_PVD_ALL, ...) (issue #11)
 
 # v1.2.4
 ## Add
