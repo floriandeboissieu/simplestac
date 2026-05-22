@@ -18,7 +18,8 @@ tests:
     - eval "$(micromamba shell hook --shell bash)"
     - micromamba activate simplestac
     - micromamba env list
-    - pip install -e .
+    - git config --global --add safe.directory .
+    - pip install .
     - pytest -s
   rules:
    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -33,6 +34,7 @@ pages:
     - eval "$(micromamba shell hook --shell bash)"
     - micromamba activate simplestac
     - micromamba env list
+    - git config --global --add safe.directory .
     - pip install -e .
     # - version=`python -m setuptools_scm --strip-dev`
     # - echo $version
